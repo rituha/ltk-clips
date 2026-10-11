@@ -143,11 +143,11 @@ select,input[type=url],input[type=text],input[type=search]{background:var(--surf
 /* 登録の日付選択 / 日程ページへのリンク */
 .navlink{justify-self:start;font-size:13px;font-weight:700;text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:4px 14px;background:var(--surface)}
 .navlink:hover{border-color:var(--accent)}
-.daypick{display:flex;flex-wrap:wrap;gap:5px}
-.dchip{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:3px 10px;font-size:12.5px;cursor:pointer;font-variant-numeric:tabular-nums}
-.dchip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-.dchip[data-when="future"]{border-style:dashed;color:var(--muted)}
-.dchip[data-when="future"][aria-pressed="true"]{color:var(--accent-ink)}
+.dayhead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px}
+.dayhead strong{font-size:13.5px;color:var(--accent)}
+.mtabs{display:inline-grid;grid-template-columns:1fr 1fr;background:var(--sunk);border-radius:8px;padding:3px;gap:3px}
+.mtabs button{appearance:none;border:0;background:transparent;border-radius:6px;padding:3px 12px;font-weight:700;font-size:12.5px;cursor:pointer;color:var(--muted)}
+.mtabs button[aria-selected="true"]{background:var(--surface);color:var(--fg)}
 @media (prefers-reduced-motion:reduce){.bar i{transition:none}}
 </style>
 </head>
@@ -232,8 +232,9 @@ select,input[type=url],input[type=text],input[type=search]{background:var(--surf
         </label>
         <p class="parse" id="r-parse" aria-live="polite"></p>
         <div class="field">どの日のクリップ？
-          <span class="hint">R＝Regular Stage / M＝Masters Cup / PO＝Playoffs。練習や企画なら「その他」</span>
-          <div class="daypick" id="r-days"></div>
+          <span class="hint">配信のあった日を押してください。練習期間の日も選べます</span>
+          <div class="dayhead"><strong id="r-daylabel"></strong><span class="mtabs" role="tablist"><button type="button" role="tab" id="r-m10">10月</button><button type="button" role="tab" id="r-m11">11月</button></span></div>
+          <div id="r-cal"></div>
         </div>
         <label class="field">ひとこと（任意・40文字まで）
           <span class="hint">どんな場面か。一番最初に登録した人のものが表示されます</span>
@@ -294,6 +295,7 @@ select,input[type=url],input[type=text],input[type=search]{background:var(--surf
 </div>
 
 <script src="config.js"></script>
+<script src="calendar.js"></script>
 <script>
 (function(){
 "use strict";
@@ -335,28 +337,9 @@ TEAMS.forEach(function(t){
 var STAR = "laurel-c-adc"; // 大御所にゅん子
 var MAX_PLAYERS = 10;
 
-/* 日程（firestore.rules にも同じ一覧があります） */
-var DAYS = [
-  {k:"d01",date:"2026-10-15",w:"木",stage:"regular", short:"R1", label:"Regular DAY1"},
-  {k:"d02",date:"2026-10-19",w:"月",stage:"regular", short:"R2", label:"Regular DAY2"},
-  {k:"d03",date:"2026-10-20",w:"火",stage:"masters", short:"M1", label:"Masters DAY1"},
-  {k:"d04",date:"2026-10-23",w:"金",stage:"regular", short:"R3", label:"Regular DAY3"},
-  {k:"d05",date:"2026-10-27",w:"火",stage:"regular", short:"R4", label:"Regular DAY4"},
-  {k:"d06",date:"2026-10-28",w:"水",stage:"masters", short:"M2", label:"Masters DAY2"},
-  {k:"d07",date:"2026-11-02",w:"月",stage:"regular", short:"R5", label:"Regular DAY5"},
-  {k:"d08",date:"2026-11-06",w:"金",stage:"regular", short:"R6", label:"Regular DAY6"},
-  {k:"d09",date:"2026-11-09",w:"月",stage:"masters", short:"M3", label:"Masters DAY3"},
-  {k:"d10",date:"2026-11-21",w:"土",stage:"playoffs",short:"PO1",label:"Playoffs DAY1"},
-  {k:"d11",date:"2026-11-22",w:"日",stage:"playoffs",short:"PO2",label:"Playoffs DAY2"},
-  {k:"other",date:"",w:"",stage:"other",short:"その他",label:"練習・企画・その他"}
-];
-var DAY_BY = {}; DAYS.forEach(function(d){ DAY_BY[d.k]=d; });
-var STAGE_COLOR = {regular:"var(--accent)", masters:"var(--gold)", playoffs:"var(--camellia)", other:"var(--muted)"};
-function todayJST(){ return new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()); }
-function whenOf(d){ if(!d.date) return "past"; var t=todayJST(); return d.date<t?"past":d.date===t?"today":"future"; }
-function md(date){ var p=date.split("-"); return (+p[1])+"/"+(+p[2]); }
-function dayLabel(k){ var d=DAY_BY[k]||DAY_BY.other; return d.date? md(d.date)+"（"+d.w+"） "+d.label : d.label; }
-function defaultDay(){ var t=todayJST(), k="other"; DAYS.forEach(function(d){ if(d.date && d.date<=t) k=d.k; }); return k; }
+/* 日付（カレンダーと大会の予定は calendar.js） */
+var CAL = window.LTKCal;
+function dayLabel(date){ return CAL.label(date); }
 
 /* ================= helpers ================= */
 function $(id){ return document.getElementById(id); }
@@ -392,7 +375,7 @@ function normalize(slug, d){
   var players=(Array.isArray(d.players)?d.players:[]).filter(function(p){ return PLAYERS[p]; });
   if(!players.length || !SLUG_RE.test(slug)) return null;
   var ts=d.createdAt; var ms = ts&&typeof ts.toMillis==="function"? ts.toMillis() : (typeof ts==="number"?ts:Date.now());
-  return {slug:slug, players:players, teams:teamsOf(players), title:typeof d.title==="string"?d.title.slice(0,40):"", day:DAY_BY[d.day]?d.day:"other", createdAt:ms};
+  return {slug:slug, players:players, teams:teamsOf(players), title:typeof d.title==="string"?d.title.slice(0,40):"", day:CAL.valid(d.day)?d.day:"", createdAt:ms};
 }
 
 function localStore(){
@@ -440,7 +423,7 @@ function firebaseStore(cfg){
               if(!snap.exists){
                 var doc={slug:slug, players:players, teams:teamsOf(players), createdAt:FV.serverTimestamp(), updatedAt:FV.serverTimestamp()};
                 if(title) doc.title=title;
-                if(DAY_BY[day]) doc.day=day;
+                if(CAL.valid(day)) doc.day=day;
                 tx.set(ref, doc); status="created"; return;
               }
               var old=snap.data().players||[];
@@ -517,15 +500,16 @@ function renderRegChosen(){
 }
 $("reg-clear").addEventListener("click",function(){ regSel.length=0; renderRegChosen(); });
 
-/* 日付：最初から「直近の試合日」が選ばれている。続けて同じ日のクリップを登録しやすいよう、登録後も選んだまま */
-var regDay=defaultDay(), dayChips={};
-DAYS.forEach(function(d){
-  var b=el("button","dchip", d.date? md(d.date)+" "+d.short : d.short); b.type="button";
-  b.title=dayLabel(d.k); b.dataset.when=whenOf(d);
-  b.addEventListener("click",function(){ regDay=d.k; renderRegDays(); });
-  dayChips[d.k]=b; $("r-days").appendChild(b);
-});
-function renderRegDays(){ DAYS.forEach(function(d){ dayChips[d.k].setAttribute("aria-pressed", regDay===d.k?"true":"false"); }); }
+/* 日付：最初は今日が選ばれている。続けて同じ日のクリップを登録しやすいよう、登録後も選んだまま */
+var regDay=CAL.defaultDate(), regMonth=CAL.monthOf(regDay);
+function renderRegDays(){
+  $("r-daylabel").textContent=CAL.label(regDay);
+  $("r-m10").setAttribute("aria-selected", regMonth===10?"true":"false");
+  $("r-m11").setAttribute("aria-selected", regMonth===11?"true":"false");
+  CAL.render($("r-cal"), {months:[[2026,regMonth]], selected:regDay, noFuture:true, onSelect:function(d){ regDay=d; renderRegDays(); }});
+}
+$("r-m10").addEventListener("click",function(){ regMonth=10; renderRegDays(); });
+$("r-m11").addEventListener("click",function(){ regMonth=11; renderRegDays(); });
 renderRegDays();
 
 $("r-url").addEventListener("input",function(){
