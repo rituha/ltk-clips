@@ -139,7 +139,7 @@ var TEAMS = [
   {id:"iris",    name:"IRIS TIARA",    roster:{m:["らいじん","ゆにか","Eugeo","Zerost","Enty"],c:["mittiii","AlphaAzur","たかやスペシャル","ごんかね","レグルシュ・ライオンハート"],n:["橘ひなの","ありけん","まいたけ","天帝フォルテ","白那しずく"]}},
   {id:"laurel",  name:"LAUREL REGALIA",roster:{m:["apaMEN","ねすてぃー","Recap","ハレっち","てぃんとん"],c:["焼きパン","Killin9Hit","乾伸一郎","大御所にゅん子","千燈ゆうひ"],n:["狐白うる","アステル・レダ","春茶","なぎさっち","No.1005"]}}
 ];
-var TIERS=[{k:"c",name:"CORE"},{k:"n",name:"NEXT"},{k:"m",name:"MASTERS"}];
+var TIERS=[{k:"m",name:"MASTERS"},{k:"c",name:"CORE"},{k:"n",name:"NEXT"}];
 var ROLES=["top","jg","mid","adc","sup"], ROLE_LABEL={top:"TOP",jg:"JG",mid:"MID",adc:"ADC",sup:"SUP"};
 var PLAYERS={}, PLAYER_ORDER=[];
 TEAMS.forEach(function(t){ TIERS.forEach(function(tr){ t.roster[tr.k].forEach(function(name,i){ var id=t.id+"-"+tr.k+"-"+ROLES[i]; PLAYERS[id]={name:name,team:t.id}; PLAYER_ORDER.push(id); }); }); });
