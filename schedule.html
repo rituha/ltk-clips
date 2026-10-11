@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>LTK Finale 日程</title>
+<meta name="description" content="LTK Season: Finale のクリップを試合日ごとに見るページ">
+<style>
+/* index.html と同じ配色・フォント。日程の帯を背表紙にして、日ごとのページをめくる */
+:root{
+  --bg:#F1F3EE; --surface:#FFFFFF; --sunk:#E5E9E2; --line:#CBD3C8;
+  --fg:#17221B; --muted:#56665B;
+  --accent:#2E6A48; --accent-ink:#FFFFFF; --gold:#9C7318; --gold-soft:#F2E6C6;
+  --dahlia:#C2410C; --camellia:#C0264E; --iris:#6D4FC2; --laurel:#2E7D4F;
+  --stage:#0C120E;
+  --f-display:"Yu Mincho","YuMincho","Hiragino Mincho ProN","Noto Serif JP",serif;
+  --f-body:"Yu Gothic UI","Yu Gothic","YuGothic","Hiragino Kaku Gothic ProN","Noto Sans JP",Meiryo,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0E1411; --surface:#161F1A; --sunk:#1D2822; --line:#2C3A31;
+  --fg:#E4EBE5; --muted:#93A497;
+  --accent:#78C095; --accent-ink:#0E1411; --gold:#DDB45A; --gold-soft:#372F1E;
+  --dahlia:#FB8B5B; --camellia:#F47A98; --iris:#A893F0; --laurel:#6CC892;
+  --stage:#050806; color-scheme:dark;
+}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.7}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:max(16px,env(safe-area-inset-left));padding-block:24px 64px;display:grid;gap:28px}
+a{color:var(--accent)}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+h1,h2{margin:0;text-wrap:balance}
+[hidden]{display:none!important}
+
+.hero{display:grid;gap:8px}
+.back{justify-self:start;font-size:13px;font-weight:700;text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:4px 14px;background:var(--surface)}
+.back:hover{border-color:var(--accent)}
+.eyebrow{font-size:12px;letter-spacing:.14em;color:var(--muted);font-weight:700}
+.hero h1{font-family:var(--f-display);font-weight:800;font-size:clamp(28px,5vw,42px);line-height:1.2}
+.hero h1 em{font-style:normal;color:var(--gold)}
+.hero p{margin:0;color:var(--muted);max-width:62ch}
+.err{background:var(--gold-soft);border-radius:8px;padding:10px 14px;font-size:13px;margin:0}
+
+/* 日程の帯 */
+.strip{overflow-x:auto;padding-bottom:6px}
+.strip ol{list-style:none;margin:0;padding:0;display:flex;gap:6px;min-width:max-content}
+.day{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 10px 7px;min-width:96px;text-align:left;cursor:pointer;display:grid;gap:0}
+.day:hover{border-color:var(--accent)}
+.day .d{font-family:var(--f-display);font-weight:800;font-size:22px;line-height:1.2;font-variant-numeric:tabular-nums}
+.day .w,.day .c{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.day .s{font-size:11px;font-weight:700;color:var(--sc)}
+.day[data-when="future"]{background:transparent;border-style:dashed}
+.day[data-when="today"]{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold-soft)}
+.day[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);border-style:solid}
+.day[aria-pressed="true"] span{color:var(--accent-ink)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}
+
+/* 選んだ日 */
+.dayhead{display:flex;flex-wrap:wrap;align-items:flex-end;gap:6px 18px;border-bottom:1px solid var(--line);padding-bottom:10px}
+.dayhead .big{font-family:var(--f-display);font-weight:800;font-size:44px;line-height:1;font-variant-numeric:tabular-nums}
+.dayhead .info{display:grid;gap:0}
+.dayhead .info strong{font-size:17px;color:var(--sc)}
+.dayhead .info span{font-size:13px;color:var(--muted)}
+.dayhead .act{margin-left:auto;display:flex;gap:8px;align-items:center}
+.btn{appearance:none;border:0;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;background:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--fg)}
+
+.player{display:grid;gap:8px}
+.screen{background:var(--stage);border-radius:12px;overflow:hidden;aspect-ratio:16/9;max-width:100%;position:relative;display:grid;place-items:center}
+.screen iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.screen .idle{display:grid;gap:6px;justify-items:center;text-align:center;padding:20px;font-size:14px;color:#A9B8AD}
+.screen .idle strong{font-family:var(--f-display);font-size:20px;color:#EEF3EF}
+.screen .idle a{color:#9ED7B4}
+.transport{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.transport .title{font-weight:700;overflow-wrap:anywhere;min-width:0;flex:1 1 200px}
+.prog{font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted)}
+
+.list{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px}
+.item{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:8px;min-width:0;align-content:start}
+.item.playing{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
+.item .t{font-weight:700;overflow-wrap:anywhere;font-size:14.5px}
+.item .tags{display:flex;flex-wrap:wrap;gap:4px}
+.item .foot{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;font-size:12.5px}
+.tag{font-size:12px;padding:1px 9px;border-radius:999px;border:1px solid var(--tc);color:var(--tc);white-space:nowrap}
+.tag.team{background:var(--tc);color:var(--surface)}
+.linkbtn{appearance:none;border:0;background:none;padding:0;color:var(--accent);text-decoration:underline;cursor:pointer;font-size:12.5px}
+.empty{border:1px dashed var(--line);border-radius:10px;padding:26px 18px;text-align:center;color:var(--muted);display:grid;gap:4px;justify-items:center}
+.empty strong{font-family:var(--f-display);font-size:18px;color:var(--fg)}
+.empty a{font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <a class="back" href="./">← クリップアルバムに戻る</a>
+    <div class="eyebrow">LEAGUE THE K4SEN · SEASON: FINALE · 2026.10.15 – 11.22</div>
+    <h1><em>LTK Finale</em> 日程から見る</h1>
+    <p>試合日を選ぶと、その日に登録されたクリップが並びます。「この日をシャッフル再生」で、その日のクリップを重複なしで流せます。</p>
+    <p class="err" id="err" hidden></p>
+  </header>
+
+  <section aria-label="日程">
+    <div class="strip"><ol id="strip"></ol></div>
+    <div class="legend">
+      <span><i style="background:var(--accent)"></i>Regular Stage（NEXT・CORE）</span>
+      <span><i style="background:var(--gold)"></i>Masters Cup（MASTERS）</span>
+      <span><i style="background:var(--camellia)"></i>Playoffs</span>
+      <span>点線の日＝これから</span>
+    </div>
+  </section>
+
+  <section aria-live="polite">
+    <div class="dayhead" id="dayhead"></div>
+  </section>
+
+  <section class="player" id="player" hidden>
+    <div class="screen" id="screen"></div>
+    <div class="transport">
+      <span class="title" id="now-title"></span>
+      <button class="btn ghost" type="button" id="prev">◀ 前へ</button>
+      <button class="btn" type="button" id="next">次へ ▶</button>
+      <span class="prog" id="prog"></span>
+    </div>
+  </section>
+
+  <section aria-label="この日のクリップ">
+    <div class="list" id="list"></div>
+  </section>
+</div>
+
+<script src="config.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* ===== 大会データ（index.html と同じ内容） ===== */
+var TEAMS = [
+  {id:"dahlia",short:"DAHLIA",roster:{m:["わしだい","しゃるる","たぬき忍者","Day1","hetel"],c:["酒寄颯馬","きなこ","スタンミじゃぱん","じゃすぱー","神楽めあ"],n:["SHAKA","まざー３","天ノ川ねる","夢野あかり","白波らむね"]}},
+  {id:"camellia",short:"CAMELLIA",roster:{m:["Yutapon","Rainbrain","Ceros","Yuhi","Nemoh"],c:["YUKIO","k4sen","葛葉","龍巻ちせ","昏昏アリア"],n:["叶","ゆふな","空澄セナ","獅子堂あかり","鷹宮リオン"]}},
+  {id:"iris",short:"IRIS",roster:{m:["らいじん","ゆにか","Eugeo","Zerost","Enty"],c:["mittiii","AlphaAzur","たかやスペシャル","ごんかね","レグルシュ・ライオンハート"],n:["橘ひなの","ありけん","まいたけ","天帝フォルテ","白那しずく"]}},
+  {id:"laurel",short:"LAUREL",roster:{m:["apaMEN","ねすてぃー","Recap","ハレっち","てぃんとん"],c:["焼きパン","Killin9Hit","乾伸一郎","大御所にゅん子","千燈ゆうひ"],n:["狐白うる","アステル・レダ","春茶","なぎさっち","No.1005"]}}
+];
+var ROLES=["top","jg","mid","adc","sup"], PLAYERS={}, TEAM_BY={};
+TEAMS.forEach(function(t){ TEAM_BY[t.id]=t; ["m","c","n"].forEach(function(k){ t.roster[k].forEach(function(name,i){ var id=t.id+"-"+k+"-"+ROLES[i]; PLAYERS[id]={name:name,team:t.id}; }); }); });
+
+var DAYS = [
+  {k:"d01",date:"2026-10-15",w:"木",stage:"regular", label:"Regular Stage DAY1"},
+  {k:"d02",date:"2026-10-19",w:"月",stage:"regular", label:"Regular Stage DAY2"},
+  {k:"d03",date:"2026-10-20",w:"火",stage:"masters", label:"Masters Cup DAY1"},
+  {k:"d04",date:"2026-10-23",w:"金",stage:"regular", label:"Regular Stage DAY3"},
+  {k:"d05",date:"2026-10-27",w:"火",stage:"regular", label:"Regular Stage DAY4"},
+  {k:"d06",date:"2026-10-28",w:"水",stage:"masters", label:"Masters Cup DAY2"},
+  {k:"d07",date:"2026-11-02",w:"月",stage:"regular", label:"Regular Stage DAY5"},
+  {k:"d08",date:"2026-11-06",w:"金",stage:"regular", label:"Regular Stage DAY6"},
+  {k:"d09",date:"2026-11-09",w:"月",stage:"masters", label:"Masters Cup DAY3"},
+  {k:"d10",date:"2026-11-21",w:"土",stage:"playoffs",label:"Playoffs DAY1"},
+  {k:"d11",date:"2026-11-22",w:"日",stage:"playoffs",label:"Playoffs DAY2"},
+  {k:"other",date:"",w:"",stage:"other",label:"練習・企画・その他"}
+];
+var DAY_BY={}; DAYS.forEach(function(d){ DAY_BY[d.k]=d; });
+var STAGE_COLOR={regular:"var(--accent)",masters:"var(--gold)",playoffs:"var(--camellia)",other:"var(--muted)"};
+var STAGE_NOTE={regular:"NEXT・CORE 部門の試合日",masters:"MASTERS 部門の試合日",playoffs:"全部門のプレイオフ（オフライン）",other:"試合日以外のクリップ"};
+
+/* ===== helpers ===== */
+function $(id){ return document.getElementById(id); }
+function el(tag,cls,text){ var e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; }
+function todayJST(){ return new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()); }
+function whenOf(d){ if(!d.date) return "past"; var t=todayJST(); return d.date<t?"past":d.date===t?"today":"future"; }
+function md(date){ var p=date.split("-"); return (+p[1])+"/"+(+p[2]); }
+function shuffle(a){ for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+function clipUrl(s){ return "https://clips.twitch.tv/"+encodeURIComponent(s); }
+var SLUG_RE=/^[A-Za-z0-9_-]{3,120}$/;
+function tag(text,color,team){ var s=el("span","tag"+(team?" team":""),text); s.style.setProperty("--tc",color); return s; }
+
+/* ===== state ===== */
+var clips=[], sel=null, queue=[], pos=-1;
+var canEmbed = /^https?:$/.test(location.protocol) && !!location.hostname;
+// 最初に開く日：URLの #d03 など > 今日までで一番新しい試合日 > その他
+(function(){
+  var h=location.hash.replace("#","");
+  if(DAY_BY[h]) { sel=h; return; }
+  var t=todayJST(); sel="other"; DAYS.forEach(function(d){ if(d.date && d.date<=t) sel=d.k; });
+})();
+
+function normalize(id,d){
+  var players=(Array.isArray(d.players)?d.players:[]).filter(function(p){ return PLAYERS[p]; });
+  if(!players.length || !SLUG_RE.test(id)) return null;
+  var teams=[]; players.forEach(function(p){ if(teams.indexOf(PLAYERS[p].team)<0) teams.push(PLAYERS[p].team); });
+  var ts=d.createdAt, ms= ts&&typeof ts.toMillis==="function"? ts.toMillis() : (typeof ts==="number"?ts:0);
+  return {slug:id, players:players, teams:teams, title:typeof d.title==="string"?d.title.slice(0,40):"", day:DAY_BY[d.day]?d.day:"other", createdAt:ms};
+}
+
+/* ===== render ===== */
+function dayClips(k){ return clips.filter(function(c){ return c.day===k; }).sort(function(a,b){ return b.createdAt-a.createdAt; }); }
+
+function renderStrip(){
+  var ol=$("strip"); ol.textContent="";
+  var counts={}; clips.forEach(function(c){ counts[c.day]=(counts[c.day]||0)+1; });
+  DAYS.forEach(function(d){
+    var li=el("li"), b=el("button","day"); b.type="button";
+    b.dataset.when=whenOf(d); b.style.setProperty("--sc",STAGE_COLOR[d.stage]);
+    b.setAttribute("aria-pressed", sel===d.k?"true":"false");
+    b.appendChild(el("span","d", d.date? md(d.date) : "他"));
+    b.appendChild(el("span","w", d.date? "（"+d.w+"）"+(b.dataset.when==="today"?" 今日":"") : "練習・企画など"));
+    b.appendChild(el("span","s", d.stage==="other"? "その他" : d.label.replace(" Stage","").replace(" Cup","")));
+    b.appendChild(el("span","c", (counts[d.k]||0)+" 本"));
+    b.addEventListener("click",function(){ sel=d.k; try{ history.replaceState(null,"","#"+d.k); }catch(e){} stop(); render(); });
+    li.appendChild(b); ol.appendChild(li);
+  });
+}
+
+function renderHead(){
+  var d=DAY_BY[sel], list=dayClips(sel), h=$("dayhead"); h.textContent="";
+  h.style.setProperty("--sc",STAGE_COLOR[d.stage]);
+  h.appendChild(el("div","big", d.date? md(d.date) : "—"));
+  var info=el("div","info");
+  info.appendChild(el("strong",null,d.label));
+  info.appendChild(el("span",null,(d.w? "（"+d.w+"） ":"")+STAGE_NOTE[d.stage]+" · "+list.length+" 本"));
+  h.appendChild(info);
+  var act=el("div","act"), b=el("button","btn","この日をシャッフル再生"); b.type="button";
+  b.disabled=!list.length;
+  b.addEventListener("click",function(){ queue=shuffle(list.map(function(c){ return c.slug; })); pos=0; play(); });
+  act.appendChild(b); h.appendChild(act);
+}
+
+function renderList(){
+  var root=$("list"); root.textContent="";
+  var d=DAY_BY[sel], list=dayClips(sel), playing= pos>=0&&pos<queue.length? queue[pos] : null;
+  if(!list.length){
+    var e=el("div","empty"); e.style.gridColumn="1/-1";
+    var fut=whenOf(d)==="future";
+    e.appendChild(el("strong",null, fut? md(d.date)+"（"+d.w+"）はこれからです" : "この日のクリップはまだありません"));
+    e.appendChild(el("span",null, fut? "配信が終わったら、この日のクリップを登録しましょう。" : "アルバムのページで、日付にこの日を選んで登録すると、ここに並びます。"));
+    var a=el("a",null,"クリップを登録しに行く →"); a.href="./#reg-h"; e.appendChild(a);
+    root.appendChild(e); return;
+  }
+  list.forEach(function(c){
+    var it=el("article","item"+(c.slug===playing?" playing":""));
+    it.appendChild(el("div","t", c.title||"（ひとことなし）"));
+    var tg=el("div","tags");
+    c.teams.forEach(function(t){ tg.appendChild(tag(TEAM_BY[t].short,"var(--"+t+")",true)); });
+    c.players.forEach(function(p){ tg.appendChild(tag(PLAYERS[p].name,"var(--"+PLAYERS[p].team+")",false)); });
+    it.appendChild(tg);
+    var f=el("div","foot");
+    var pb=el("button","linkbtn","ここで再生"); pb.type="button";
+    pb.addEventListener("click",function(){ queue=[c.slug]; pos=0; play(); });
+    f.appendChild(pb);
+    var a=el("a",null,"Twitchで開く ↗"); a.href=clipUrl(c.slug); a.target="_blank"; a.rel="noopener noreferrer"; f.appendChild(a);
+    it.appendChild(f); root.appendChild(it);
+  });
+}
+
+function render(){ renderStrip(); renderHead(); renderList(); }
+
+/* ===== player ===== */
+function stop(){ queue=[]; pos=-1; $("player").hidden=true; $("screen").textContent=""; }
+function play(){
+  var slug=queue[pos], c=clips.filter(function(x){ return x.slug===slug; })[0]||{title:""};
+  var scr=$("screen"); scr.textContent="";
+  if(canEmbed){
+    var f=document.createElement("iframe");
+    f.src="https://clips.twitch.tv/embed?clip="+encodeURIComponent(slug)+"&parent="+encodeURIComponent(location.hostname)+"&autoplay=true&muted=false";
+    f.allow="autoplay; fullscreen"; f.allowFullscreen=true; f.title="Twitch クリップ"; scr.appendChild(f);
+  } else {
+    var idle=el("div","idle"); idle.appendChild(el("strong",null,"ここではサイト内で再生できません"));
+    var a=el("a",null,"Twitchで開く ↗"); a.href=clipUrl(slug); a.target="_blank"; a.rel="noopener noreferrer"; idle.appendChild(a); scr.appendChild(idle);
+  }
+  $("player").hidden=false;
+  $("now-title").textContent=c.title||slug;
+  $("prog").textContent=(pos+1)+" / "+queue.length;
+  $("prev").disabled=pos<=0; $("next").textContent= pos+1<queue.length? "次へ ▶" : "おわり";
+  renderList();
+  $("player").scrollIntoView({behavior:"smooth",block:"center"});
+}
+$("prev").addEventListener("click",function(){ if(pos>0){ pos--; play(); } });
+$("next").addEventListener("click",function(){ if(pos+1<queue.length){ pos++; play(); } else { stop(); renderList(); } });
+
+/* ===== 起動 ===== */
+render();
+var cfg=window.LTK_FIREBASE_CONFIG||{};
+function showErr(t){ $("err").textContent=t; $("err").hidden=false; }
+if(cfg.apiKey && cfg.projectId){
+  var base="https://www.gstatic.com/firebasejs/10.12.2/";
+  var load=function(src){ return new Promise(function(ok,ng){ var s=document.createElement("script"); s.src=src; s.onload=ok; s.onerror=ng; document.head.appendChild(s); }); };
+  load(base+"firebase-app-compat.js").then(function(){ return load(base+"firebase-firestore-compat.js"); }).then(function(){
+    firebase.initializeApp(cfg).firestore().collection("clips").onSnapshot(function(snap){
+      clips=snap.docs.map(function(d){ return normalize(d.id,d.data()); }).filter(Boolean); render();
+    }, function(){ showErr("クリップを読み込めませんでした。時間をおいて開き直してください。"); });
+  }).catch(function(){ showErr("データベースに接続できませんでした。通信を確認して開き直してください。"); });
+} else {
+  try{ var mem=JSON.parse(localStorage.getItem("ltk-finale-clips-demo")||"{}")||{}; clips=Object.keys(mem).map(function(k){ return normalize(k,mem[k]); }).filter(Boolean); }catch(e){}
+  showErr("お試しモードです。このブラウザで登録したクリップだけが表示されます。");
+  render();
+}
+})();
+</script>
+</body>
+</html>

@@ -140,6 +140,14 @@ select,input[type=url],input[type=text],input[type=search]{background:var(--surf
 .about{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px;font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:20px}
 .about h3{font-size:14px;color:var(--fg);margin-bottom:4px}
 .about ul{margin:0;padding-left:1.2em}
+/* 登録の日付選択 / 日程ページへのリンク */
+.navlink{justify-self:start;font-size:13px;font-weight:700;text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:4px 14px;background:var(--surface)}
+.navlink:hover{border-color:var(--accent)}
+.daypick{display:flex;flex-wrap:wrap;gap:5px}
+.dchip{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:3px 10px;font-size:12.5px;cursor:pointer;font-variant-numeric:tabular-nums}
+.dchip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.dchip[data-when="future"]{border-style:dashed;color:var(--muted)}
+.dchip[data-when="future"][aria-pressed="true"]{color:var(--accent-ink)}
 @media (prefers-reduced-motion:reduce){.bar i{transition:none}}
 </style>
 </head>
@@ -151,6 +159,7 @@ select,input[type=url],input[type=text],input[type=search]{background:var(--surf
     <h1><em>LTK Finale</em> クリップアルバム</h1>
     <p>大御所にゅん子さんが大会を振り返るためのクリップ置き場です。Twitch クリップのリンクを貼って選手を選ぶと、チーム・選手と紐づいて登録されます。登録は誰でもできます。</p>
     <div class="counts"><span><b id="c-clips">0</b>本のクリップ</span><span><b id="c-players">0</b>人の選手が登場</span></div>
+    <a class="navlink" href="schedule.html">日程から見る →</a>
     <p class="demo" id="demo-banner" hidden>お試しモードで動いています。登録したクリップはこのブラウザの中にだけ保存され、他の人には見えません。みんなで使うには「はじめに読んでください.txt」の手順で Firebase を設定してください。</p>
     <p class="demo" id="err-banner" hidden></p>
   </header>
@@ -222,6 +231,10 @@ select,input[type=url],input[type=text],input[type=search]{background:var(--surf
           <input type="url" id="r-url" autocomplete="off" required placeholder="https://clips.twitch.tv/…">
         </label>
         <p class="parse" id="r-parse" aria-live="polite"></p>
+        <div class="field">どの日のクリップ？
+          <span class="hint">R＝Regular Stage / M＝Masters Cup / PO＝Playoffs。練習や企画なら「その他」</span>
+          <div class="daypick" id="r-days"></div>
+        </div>
         <label class="field">ひとこと（任意・40文字まで）
           <span class="hint">どんな場面か。一番最初に登録した人のものが表示されます</span>
           <input type="text" id="r-title" maxlength="40" placeholder="例：にゅん子ジンクス ペンタキル">
@@ -322,6 +335,29 @@ TEAMS.forEach(function(t){
 var STAR = "laurel-c-adc"; // 大御所にゅん子
 var MAX_PLAYERS = 10;
 
+/* 日程（firestore.rules にも同じ一覧があります） */
+var DAYS = [
+  {k:"d01",date:"2026-10-15",w:"木",stage:"regular", short:"R1", label:"Regular DAY1"},
+  {k:"d02",date:"2026-10-19",w:"月",stage:"regular", short:"R2", label:"Regular DAY2"},
+  {k:"d03",date:"2026-10-20",w:"火",stage:"masters", short:"M1", label:"Masters DAY1"},
+  {k:"d04",date:"2026-10-23",w:"金",stage:"regular", short:"R3", label:"Regular DAY3"},
+  {k:"d05",date:"2026-10-27",w:"火",stage:"regular", short:"R4", label:"Regular DAY4"},
+  {k:"d06",date:"2026-10-28",w:"水",stage:"masters", short:"M2", label:"Masters DAY2"},
+  {k:"d07",date:"2026-11-02",w:"月",stage:"regular", short:"R5", label:"Regular DAY5"},
+  {k:"d08",date:"2026-11-06",w:"金",stage:"regular", short:"R6", label:"Regular DAY6"},
+  {k:"d09",date:"2026-11-09",w:"月",stage:"masters", short:"M3", label:"Masters DAY3"},
+  {k:"d10",date:"2026-11-21",w:"土",stage:"playoffs",short:"PO1",label:"Playoffs DAY1"},
+  {k:"d11",date:"2026-11-22",w:"日",stage:"playoffs",short:"PO2",label:"Playoffs DAY2"},
+  {k:"other",date:"",w:"",stage:"other",short:"その他",label:"練習・企画・その他"}
+];
+var DAY_BY = {}; DAYS.forEach(function(d){ DAY_BY[d.k]=d; });
+var STAGE_COLOR = {regular:"var(--accent)", masters:"var(--gold)", playoffs:"var(--camellia)", other:"var(--muted)"};
+function todayJST(){ return new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()); }
+function whenOf(d){ if(!d.date) return "past"; var t=todayJST(); return d.date<t?"past":d.date===t?"today":"future"; }
+function md(date){ var p=date.split("-"); return (+p[1])+"/"+(+p[2]); }
+function dayLabel(k){ var d=DAY_BY[k]||DAY_BY.other; return d.date? md(d.date)+"（"+d.w+"） "+d.label : d.label; }
+function defaultDay(){ var t=todayJST(), k="other"; DAYS.forEach(function(d){ if(d.date && d.date<=t) k=d.k; }); return k; }
+
 /* ================= helpers ================= */
 function $(id){ return document.getElementById(id); }
 function el(tag,cls,text){ var e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; }
@@ -356,7 +392,7 @@ function normalize(slug, d){
   var players=(Array.isArray(d.players)?d.players:[]).filter(function(p){ return PLAYERS[p]; });
   if(!players.length || !SLUG_RE.test(slug)) return null;
   var ts=d.createdAt; var ms = ts&&typeof ts.toMillis==="function"? ts.toMillis() : (typeof ts==="number"?ts:Date.now());
-  return {slug:slug, players:players, teams:teamsOf(players), title:typeof d.title==="string"?d.title.slice(0,40):"", createdAt:ms};
+  return {slug:slug, players:players, teams:teamsOf(players), title:typeof d.title==="string"?d.title.slice(0,40):"", day:DAY_BY[d.day]?d.day:"other", createdAt:ms};
 }
 
 function localStore(){
@@ -369,10 +405,10 @@ function localStore(){
   return {
     demo:true,
     subscribe:function(cb){ listener=cb; emit(); },
-    register:function(slug, players, title){
+    register:function(slug, players, title, day){
       load();
       var cur=mem[slug], status;
-      if(!cur){ mem[slug]={players:players.slice(), teams:teamsOf(players), title:title, createdAt:Date.now()}; status="created"; }
+      if(!cur){ mem[slug]={players:players.slice(), teams:teamsOf(players), title:title, day:day, createdAt:Date.now()}; status="created"; }
       else{
         var add=players.filter(function(p){ return cur.players.indexOf(p)<0; });
         if(!add.length) status="exists";
@@ -397,13 +433,14 @@ function firebaseStore(cfg){
             cb(snap.docs.map(function(d){ return normalize(d.id,d.data()); }).filter(Boolean));
           }, onErr);
         },
-        register:function(slug, players, title){
+        register:function(slug, players, title, day){
           var ref=fs.collection("clips").doc(slug), status;
           return fs.runTransaction(function(tx){
             return tx.get(ref).then(function(snap){
               if(!snap.exists){
                 var doc={slug:slug, players:players, teams:teamsOf(players), createdAt:FV.serverTimestamp(), updatedAt:FV.serverTimestamp()};
                 if(title) doc.title=title;
+                if(DAY_BY[day]) doc.day=day;
                 tx.set(ref, doc); status="created"; return;
               }
               var old=snap.data().players||[];
@@ -480,13 +517,24 @@ function renderRegChosen(){
 }
 $("reg-clear").addEventListener("click",function(){ regSel.length=0; renderRegChosen(); });
 
+/* 日付：最初から「直近の試合日」が選ばれている。続けて同じ日のクリップを登録しやすいよう、登録後も選んだまま */
+var regDay=defaultDay(), dayChips={};
+DAYS.forEach(function(d){
+  var b=el("button","dchip", d.date? md(d.date)+" "+d.short : d.short); b.type="button";
+  b.title=dayLabel(d.k); b.dataset.when=whenOf(d);
+  b.addEventListener("click",function(){ regDay=d.k; renderRegDays(); });
+  dayChips[d.k]=b; $("r-days").appendChild(b);
+});
+function renderRegDays(){ DAYS.forEach(function(d){ dayChips[d.k].setAttribute("aria-pressed", regDay===d.k?"true":"false"); }); }
+renderRegDays();
+
 $("r-url").addEventListener("input",function(){
   var p=$("r-parse"), v=this.value.trim();
   if(!v){ p.textContent=""; p.className="parse"; return; }
   var slug=parseClip(v);
   if(!slug){ p.textContent="Twitch クリップのリンクとして読み取れません。クリップの「共有」からコピーしたリンクを貼ってください。"; p.className="parse ng"; return; }
   var ex=clips.filter(function(c){ return c.slug===slug; })[0];
-  if(ex){ p.textContent="登録済みのクリップです（"+ex.players.map(function(id){return PLAYERS[id].name;}).join("・")+"）。選んだ選手が追加されます。"; p.className="parse ok"; }
+  if(ex){ p.textContent="登録済みのクリップです（"+dayLabel(ex.day)+"・"+ex.players.map(function(id){return PLAYERS[id].name;}).join("・")+"）。選んだ選手が追加されます。"; p.className="parse ok"; }
   else { p.textContent="クリップID："+slug; p.className="parse ok"; }
 });
 
@@ -501,9 +549,9 @@ $("regf").addEventListener("submit",function(ev){
   if(regSel.length>MAX_PLAYERS) return ng("選手は"+MAX_PLAYERS+"人までです。");
   var title=$("r-title").value.trim().slice(0,40);
   var btn=$("r-submit"); btn.disabled=true; msg.textContent="登録中…"; msg.className="msg info";
-  store.register(slug, regSel.slice(), title).then(function(status){
+  store.register(slug, regSel.slice(), title, regDay).then(function(status){
     btn.disabled=false;
-    if(status==="created"){ msg.textContent="登録しました。"; msg.className="msg ok"; }
+    if(status==="created"){ msg.textContent=dayLabel(regDay)+" のクリップとして登録しました。"; msg.className="msg ok"; }
     else if(status==="merged"){ msg.textContent="登録済みのクリップだったので、選んだ選手を追加して1つにまとめました。"; msg.className="msg ok"; }
     else { msg.textContent="このクリップは同じ選手でもう登録されています。"; msg.className="msg info"; }
     $("r-url").value=""; $("r-title").value=""; $("r-parse").textContent=""; regSel.length=0; renderRegChosen();
