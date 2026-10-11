@@ -6,8 +6,8 @@ rules_version = '2';
 // ・誰でも読める
 // ・誰でも新しいクリップを登録できる（Twitch クリップIDの形・決められた選手IDだけ）
 // ・登録済みクリップには「選手を追加する」ことだけできる（消す・書き換えるのは不可）
-// ・削除や修正は、管理者が Firebase の画面から直接行う
-// ・clips 以外の場所には誰も読み書きできない
+// ・削除や修正は、管理ページ（合言葉つきURL）か Firebase の画面から管理者が行う
+// ・clips と admins 以外の場所には誰も読み書きできない
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -40,6 +40,26 @@ service cloud.firestore {
         && (!('day' in d) || (d.day is string && d.day.matches('^2026-(10-(0[1-9]|[12][0-9]|3[01])|11-(0[1-9]|[12][0-9]|30))$')));
     }
 
+    // 管理ページ（admin.html）用の合言葉。
+    // ※ 本物の合言葉は Firebase のルール画面にだけ書く。GitHub のこのファイルには載せない。
+    function adminKey() {
+      return 'ここに合言葉（GitHubには載せない）';
+    }
+
+    // 管理ページを合言葉つきURLで開いた人（匿名ログイン）だけが管理者になれる
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.key == adminKey();
+    }
+
+    match /admins/{uid} {
+      allow read, delete: if false;
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['key'])
+        && request.resource.data.key == adminKey();
+    }
+
     match /clips/{slug} {
       allow read: if true;
 
@@ -55,7 +75,11 @@ service cloud.firestore {
         && request.resource.data.teams.hasAll(resource.data.teams)
         && request.resource.data.updatedAt == request.time;
 
-      allow delete: if false;
+      // 管理者：ひとこと・選手・日付の書き直し（登録日時は変えられない）と削除
+      allow update: if isAdmin()
+        && validClip(slug, request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isAdmin();
     }
   }
 }

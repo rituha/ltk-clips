@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>LTK Finale 管理</title>
+<style>
+/* 管理用。index.html と同じ配色で、一覧＋その場で開く編集パネル */
+:root{
+  --bg:#F1F3EE; --surface:#FFFFFF; --sunk:#E5E9E2; --line:#CBD3C8;
+  --fg:#17221B; --muted:#56665B;
+  --accent:#2E6A48; --accent-ink:#FFFFFF; --gold:#9C7318; --gold-soft:#F2E6C6;
+  --err:#B42346;
+  --dahlia:#C2410C; --camellia:#C0264E; --iris:#6D4FC2; --laurel:#2E7D4F;
+  --f-display:"Yu Mincho","YuMincho","Hiragino Mincho ProN","Noto Serif JP",serif;
+  --f-body:"Yu Gothic UI","Yu Gothic","YuGothic","Hiragino Kaku Gothic ProN","Noto Sans JP",Meiryo,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0E1411; --surface:#161F1A; --sunk:#1D2822; --line:#2C3A31;
+  --fg:#E4EBE5; --muted:#93A497;
+  --accent:#78C095; --accent-ink:#0E1411; --gold:#DDB45A; --gold-soft:#372F1E;
+  --err:#F08AA2;
+  --dahlia:#FB8B5B; --camellia:#F47A98; --iris:#A893F0; --laurel:#6CC892;
+  color-scheme:dark;
+}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.7}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:max(16px,env(safe-area-inset-left));padding-block:24px 64px;display:grid;gap:24px}
+.wrap>*{min-width:0}
+a{color:var(--accent)}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+h1,h2{margin:0;text-wrap:balance}
+[hidden]{display:none!important}
+
+.hero{display:grid;gap:6px}
+.hero h1{font-family:var(--f-display);font-weight:800;font-size:clamp(26px,4.6vw,38px);line-height:1.2}
+.hero h1 em{font-style:normal;color:var(--gold)}
+.hero p{margin:0;color:var(--muted);max-width:66ch;font-size:14px}
+.status{border-radius:8px;padding:10px 14px;font-size:13.5px;margin:0;background:var(--sunk)}
+.status.ok{background:var(--gold-soft)}
+.status.ng{background:var(--err);color:var(--bg);font-weight:700}
+
+.tools{display:flex;flex-wrap:wrap;gap:8px}
+.tools input,.tools select{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.tools input{flex:1 1 220px;min-width:0}
+.sum{font-size:13px;color:var(--muted)}
+
+table{width:100%;border-collapse:collapse;font-size:14px}
+.tablewrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+th{font-size:12px;color:var(--muted);text-align:left;font-weight:700;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.date{white-space:nowrap;font-variant-numeric:tabular-nums}
+td.title{min-width:180px;overflow-wrap:anywhere;font-weight:700}
+td.title small{display:block;font-weight:400;font-size:11px;color:var(--muted);font-family:Consolas,"Cascadia Mono",monospace}
+td.players{min-width:200px}
+td.act{white-space:nowrap}
+tr.editing td{background:var(--gold-soft)}
+.tags{display:flex;flex-wrap:wrap;gap:4px}
+.tag{font-size:12px;padding:1px 9px;border-radius:999px;border:1px solid var(--tc);color:var(--tc);white-space:nowrap}
+
+.btn{appearance:none;border:0;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer;background:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--fg)}
+.btn.danger{background:var(--err);color:var(--bg)}
+.btn.small{padding:4px 10px;font-size:13px}
+.linkbtn{appearance:none;border:0;background:none;padding:0;color:var(--accent);text-decoration:underline;cursor:pointer;font-size:13px}
+
+/* 編集パネル */
+.editor{background:var(--surface);border:2px solid var(--gold);border-radius:12px;padding:16px;display:grid;gap:16px}
+.editor h2{font-family:var(--f-display);font-size:20px}
+.editor .slug{font-size:12px;color:var(--muted);font-family:Consolas,"Cascadia Mono",monospace;overflow-wrap:anywhere}
+.ecols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:16px;align-items:start}
+@media (max-width:860px){.ecols{grid-template-columns:minmax(0,1fr)}}
+.field{display:grid;gap:4px;font-size:13px;font-weight:700}
+.field .hint{font-weight:400;color:var(--muted);font-size:12px}
+.field input{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;font-weight:400}
+.daylabel{color:var(--accent)}
+.picker{display:grid;gap:8px}
+.pteam{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.pteam>summary{list-style:none;cursor:pointer;padding:6px 12px;display:flex;justify-content:space-between;font-weight:700;font-size:13px;color:var(--tc);background:var(--sunk)}
+.pteam>summary::-webkit-details-marker{display:none}
+.pteam>summary .n{color:var(--muted);font-weight:400}
+.tier{display:grid;grid-template-columns:64px minmax(0,1fr);gap:6px 8px;padding:6px 12px;border-top:1px solid var(--line)}
+.tier>small{font-size:10px;letter-spacing:.12em;font-weight:700;color:var(--muted);padding-top:5px}
+.pchips{display:flex;flex-wrap:wrap;gap:5px}
+.pchip{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:3px 10px;font-size:12.5px;cursor:pointer;display:inline-flex;gap:5px;align-items:baseline;font-weight:400}
+.pchip i{font-style:normal;font-size:10px;color:var(--muted)}
+.pchip[aria-pressed="true"]{background:var(--tc);border-color:var(--tc);color:var(--surface)}
+.pchip[aria-pressed="true"] i{color:var(--surface)}
+.ebar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ebar .sp{flex:1}
+.msg{margin:0;font-size:13.5px;font-weight:700}
+.msg.ok{color:var(--accent)} .msg.ng{color:var(--err)}
+.confirm{display:inline-flex;gap:8px;align-items:center;font-size:13px;font-weight:700;color:var(--err)}
+.empty{border:1px dashed var(--line);border-radius:10px;padding:24px;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <h1><em>LTK Finale</em> 管理ページ</h1>
+    <p>登録されたクリップのひとこと・選手・日付を直したり、消したりできます。このページのURL（最後の # から後ろが合言葉）は、人に見せないでください。</p>
+    <p class="status" id="status">準備中…</p>
+  </header>
+
+  <section id="editor-wrap" hidden></section>
+
+  <section id="main" hidden>
+    <div class="tools">
+      <input type="search" id="q" placeholder="ひとこと・選手名・クリップIDで検索" aria-label="検索">
+      <select id="fday" aria-label="日付で絞り込み"><option value="">全部の日付</option><option value="none">日付なし</option></select>
+    </div>
+    <p class="sum" id="sum"></p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>日付</th><th>ひとこと / クリップID</th><th>選手</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script src="config.js"></script>
+<script src="calendar.js"></script>
+<script>
+(function(){
+"use strict";
+var CAL=window.LTKCal;
+
+/* ===== 選手データ（index.html と同じ内容） ===== */
+var TEAMS = [
+  {id:"dahlia",  name:"DAHLIA DIADEM", roster:{m:["わしだい","しゃるる","たぬき忍者","Day1","hetel"],c:["酒寄颯馬","きなこ","スタンミじゃぱん","じゃすぱー","神楽めあ"],n:["SHAKA","まざー３","天ノ川ねる","夢野あかり","白波らむね"]}},
+  {id:"camellia",name:"CAMELLIA CROWN",roster:{m:["Yutapon","Rainbrain","Ceros","Yuhi","Nemoh"],c:["YUKIO","k4sen","葛葉","龍巻ちせ","昏昏アリア"],n:["叶","ゆふな","空澄セナ","獅子堂あかり","鷹宮リオン"]}},
+  {id:"iris",    name:"IRIS TIARA",    roster:{m:["らいじん","ゆにか","Eugeo","Zerost","Enty"],c:["mittiii","AlphaAzur","たかやスペシャル","ごんかね","レグルシュ・ライオンハート"],n:["橘ひなの","ありけん","まいたけ","天帝フォルテ","白那しずく"]}},
+  {id:"laurel",  name:"LAUREL REGALIA",roster:{m:["apaMEN","ねすてぃー","Recap","ハレっち","てぃんとん"],c:["焼きパン","Killin9Hit","乾伸一郎","大御所にゅん子","千燈ゆうひ"],n:["狐白うる","アステル・レダ","春茶","なぎさっち","No.1005"]}}
+];
+var TIERS=[{k:"c",name:"CORE"},{k:"n",name:"NEXT"},{k:"m",name:"MASTERS"}];
+var ROLES=["top","jg","mid","adc","sup"], ROLE_LABEL={top:"TOP",jg:"JG",mid:"MID",adc:"ADC",sup:"SUP"};
+var PLAYERS={}, PLAYER_ORDER=[];
+TEAMS.forEach(function(t){ TIERS.forEach(function(tr){ t.roster[tr.k].forEach(function(name,i){ var id=t.id+"-"+tr.k+"-"+ROLES[i]; PLAYERS[id]={name:name,team:t.id}; PLAYER_ORDER.push(id); }); }); });
+var MAX_PLAYERS=10;
+
+/* ===== helpers ===== */
+function $(id){ return document.getElementById(id); }
+function el(tag,cls,text){ var e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; }
+function teamsOf(ps){ var t=[]; ps.forEach(function(p){ if(t.indexOf(PLAYERS[p].team)<0) t.push(PLAYERS[p].team); }); return t; }
+function ptag(id){ var s=el("span","tag",PLAYERS[id].name); s.style.setProperty("--tc","var(--"+PLAYERS[id].team+")"); return s; }
+function status(text,kind){ var s=$("status"); s.textContent=text; s.className="status"+(kind?" "+kind:""); }
+var SLUG_RE=/^[A-Za-z0-9_-]{3,120}$/;
+
+/* ===== state ===== */
+var fs=null, FV=null, clips=[], editing=null;
+var KEY=decodeURIComponent(location.hash.slice(1));
+
+/* 日付の絞り込み候補 */
+(function(){
+  var sel=$("fday");
+  ["2026-10","2026-11"].forEach(function(ym){
+    var m=+ym.slice(5), days=new Date(Date.UTC(2026,m,0)).getUTCDate();
+    for(var d=1; d<=days; d++){ var date=ym+"-"+(d<10?"0":"")+d, o=el("option",null,CAL.label(date)); o.value=date; sel.appendChild(o); }
+  });
+  sel.addEventListener("change",renderRows);
+  $("q").addEventListener("input",renderRows);
+})();
+
+/* ===== 一覧 ===== */
+function normalize(id,d){
+  if(!SLUG_RE.test(id)) return null;
+  var players=(Array.isArray(d.players)?d.players:[]).filter(function(p){ return PLAYERS[p]; });
+  var ts=d.createdAt, ms= ts&&typeof ts.toMillis==="function"? ts.toMillis() : 0;
+  return {slug:id, players:players, title:typeof d.title==="string"?d.title:"", day:CAL.valid(d.day)?d.day:"", createdAt:ms};
+}
+function renderRows(){
+  var q=$("q").value.trim().toLowerCase(), fd=$("fday").value;
+  var list=clips.filter(function(c){
+    if(fd==="none" && c.day) return false;
+    if(fd && fd!=="none" && c.day!==fd) return false;
+    if(q){ var hay=(c.title+" "+c.slug+" "+c.players.map(function(p){ return PLAYERS[p].name; }).join(" ")).toLowerCase(); if(hay.indexOf(q)<0) return false; }
+    return true;
+  }).sort(function(a,b){ return b.createdAt-a.createdAt; });
+  $("sum").textContent=list.length+" 本 / 全 "+clips.length+" 本 · 登録が新しい順";
+  var tb=$("rows"); tb.textContent="";
+  if(!list.length){ var tr=el("tr"), td=el("td",null, clips.length?"条件に合うクリップがありません。":"まだクリップがありません。"); td.colSpan=4; td.style.color="var(--muted)"; tr.appendChild(td); tb.appendChild(tr); return; }
+  list.forEach(function(c){
+    var tr=el("tr", editing===c.slug?"editing":null);
+    tr.appendChild(el("td","date", c.day? CAL.label(c.day) : "日付なし"));
+    var tt=el("td","title", c.title||"（ひとことなし）"); tt.appendChild(el("small",null,c.slug)); tr.appendChild(tt);
+    var tp=el("td","players"), tg=el("div","tags"); c.players.forEach(function(p){ tg.appendChild(ptag(p)); }); tp.appendChild(tg); tr.appendChild(tp);
+    var ta=el("td","act");
+    var eb=el("button","btn small","編集"); eb.type="button"; eb.addEventListener("click",function(){ openEditor(c.slug); }); ta.appendChild(eb);
+    var a=el("a",null," ↗"); a.href="https://clips.twitch.tv/"+encodeURIComponent(c.slug); a.target="_blank"; a.rel="noopener noreferrer"; a.title="Twitchで開く"; ta.appendChild(a);
+    tr.appendChild(ta); tb.appendChild(tr);
+  });
+}
+
+/* ===== 編集パネル ===== */
+function openEditor(slug){
+  var c=clips.filter(function(x){ return x.slug===slug; })[0]; if(!c) return;
+  editing=slug; renderRows();
+  var st={title:c.title, players:c.players.slice(), day:c.day||CAL.defaultDate(), month:CAL.monthOf(c.day||CAL.defaultDate())};
+  var w=$("editor-wrap"); w.textContent=""; w.hidden=false;
+  var box=el("div","editor");
+  var hd=el("div"); hd.appendChild(el("h2",null,"クリップを編集"));
+  var sl=el("div","slug","クリップID："+slug+"　"); var a=el("a",null,"Twitchで開く ↗"); a.href="https://clips.twitch.tv/"+encodeURIComponent(slug); a.target="_blank"; a.rel="noopener noreferrer"; sl.appendChild(a); hd.appendChild(sl);
+  box.appendChild(hd);
+
+  var cols=el("div","ecols"), left=el("div"), right=el("div");
+  left.style.display="grid"; left.style.gap="14px";
+  var f1=el("label","field"); f1.appendChild(document.createTextNode("ひとこと（40文字まで・空にすると「ひとことなし」）"));
+  var ti=el("input"); ti.type="text"; ti.maxLength=40; ti.id="e-title"; ti.value=st.title; f1.appendChild(ti); left.appendChild(f1);
+
+  var f2=el("div","field"); f2.appendChild(document.createTextNode("日付 "));
+  var dl=el("span","daylabel"); f2.appendChild(dl);
+  var cal=el("div"); f2.appendChild(cal); left.appendChild(f2);
+  function drawCal(){ dl.textContent="："+CAL.label(st.day); CAL.render(cal,{selected:st.day, onSelect:function(d){ st.day=d; drawCal(); }}); }
+  drawCal();
+
+  var f3=el("div","field"); f3.appendChild(document.createTextNode("映っている選手（1〜10人）"));
+  var chosen=el("div","tags"); f3.appendChild(chosen);
+  var picker=el("div","picker"); f3.appendChild(picker); right.appendChild(f3);
+  var chips={};
+  TEAMS.forEach(function(t){
+    var det=el("details","pteam"); det.style.setProperty("--tc","var(--"+t.id+")");
+    if(st.players.some(function(p){ return PLAYERS[p].team===t.id; })) det.open=true;
+    var sum=el("summary"); sum.appendChild(el("span",null,t.name)); var n=el("span","n",""); sum.appendChild(n); det.appendChild(sum); t._n=n;
+    TIERS.forEach(function(tr){
+      var row=el("div","tier"); row.appendChild(el("small",null,tr.name)); var bx=el("div","pchips");
+      ROLES.forEach(function(r){
+        var id=t.id+"-"+tr.k+"-"+r, b=el("button","pchip"); b.type="button"; b.style.setProperty("--tc","var(--"+t.id+")");
+        b.appendChild(el("i",null,ROLE_LABEL[r])); b.appendChild(document.createTextNode(PLAYERS[id].name));
+        b.addEventListener("click",function(){ var i=st.players.indexOf(id); if(i>=0) st.players.splice(i,1); else st.players.push(id); drawPlayers(); });
+        chips[id]=b; bx.appendChild(b);
+      });
+      row.appendChild(bx); det.appendChild(row);
+    });
+    picker.appendChild(det);
+  });
+  function drawPlayers(){
+    PLAYER_ORDER.forEach(function(id){ chips[id].setAttribute("aria-pressed", st.players.indexOf(id)>=0?"true":"false"); });
+    TEAMS.forEach(function(t){ var k=st.players.filter(function(p){ return PLAYERS[p].team===t.id; }).length; t._n.textContent=k? k+"人選択中":""; });
+    chosen.textContent=""; if(!st.players.length) chosen.appendChild(el("span",null,"（まだ選んでいません）"));
+    st.players.forEach(function(p){ chosen.appendChild(ptag(p)); });
+  }
+  drawPlayers();
+  cols.appendChild(left); cols.appendChild(right); box.appendChild(cols);
+
+  var bar=el("div","ebar");
+  var save=el("button","btn","保存する"); save.type="button";
+  var cancel=el("button","btn ghost","閉じる"); cancel.type="button";
+  var msg=el("p","msg"); msg.setAttribute("role","status");
+  var sp=el("span","sp");
+  var delSlot=el("span"), del=el("button","btn danger small","このクリップを削除"); del.type="button"; delSlot.appendChild(del);
+  bar.appendChild(save); bar.appendChild(cancel); bar.appendChild(msg); bar.appendChild(sp); bar.appendChild(delSlot);
+  box.appendChild(bar);
+  w.appendChild(box);
+  w.scrollIntoView({behavior:"smooth",block:"start"});
+
+  cancel.addEventListener("click",closeEditor);
+  save.addEventListener("click",function(){
+    msg.className="msg"; msg.textContent="";
+    if(!st.players.length){ msg.textContent="選手を1人以上選んでください。"; msg.className="msg ng"; return; }
+    if(st.players.length>MAX_PLAYERS){ msg.textContent="選手は"+MAX_PLAYERS+"人までです。"; msg.className="msg ng"; return; }
+    var title=ti.value.trim().slice(0,40);
+    var data={players:st.players.slice(), teams:teamsOf(st.players), day:st.day, updatedAt:FV.serverTimestamp(), title: title? title : FV.delete()};
+    save.disabled=true; msg.textContent="保存中…";
+    fs.collection("clips").doc(slug).update(data).then(function(){
+      save.disabled=false; msg.textContent="保存しました。"; msg.className="msg ok";
+    }).catch(function(e){
+      save.disabled=false; msg.className="msg ng";
+      msg.textContent = e&&e.code==="permission-denied" ? "保存できませんでした。合言葉が古いか、内容がルールに合っていません。" : "保存できませんでした。通信を確認してもう一度。";
+    });
+  });
+  del.addEventListener("click",function(){
+    delSlot.textContent="";
+    var cf=el("span","confirm","本当に消しますか？（元に戻せません）");
+    var yes=el("button","btn danger small","消す"); yes.type="button";
+    var no=el("button","btn ghost small","やめる"); no.type="button";
+    cf.appendChild(yes); cf.appendChild(no); delSlot.appendChild(cf);
+    no.addEventListener("click",function(){ delSlot.textContent=""; delSlot.appendChild(del); });
+    yes.addEventListener("click",function(){
+      yes.disabled=true;
+      fs.collection("clips").doc(slug).delete().then(function(){ closeEditor(); status("「"+(st.title||slug)+"」を削除しました。","ok"); })
+        .catch(function(){ delSlot.textContent="削除できませんでした。"; });
+    });
+  });
+}
+function closeEditor(){ editing=null; $("editor-wrap").hidden=true; $("editor-wrap").textContent=""; renderRows(); }
+
+/* ===== 起動：合言葉の確認 → 一覧 ===== */
+var cfg=window.LTK_FIREBASE_CONFIG||{};
+if(!KEY){ status("このページは管理用です。合言葉つきのURLで開いてください。"); return; }
+if(!cfg.apiKey){ status("Firebase が設定されていません（config.js）。","ng"); return; }
+var base="https://www.gstatic.com/firebasejs/10.12.2/";
+function load(src){ return new Promise(function(ok,ng){ var s=document.createElement("script"); s.src=src; s.onload=ok; s.onerror=ng; document.head.appendChild(s); }); }
+load(base+"firebase-app-compat.js")
+.then(function(){ return load(base+"firebase-auth-compat.js"); })
+.then(function(){ return load(base+"firebase-firestore-compat.js"); })
+.then(function(){
+  var app=firebase.initializeApp(cfg); fs=app.firestore(); FV=firebase.firestore.FieldValue;
+  status("合言葉を確認しています…");
+  return app.auth().signInAnonymously().then(function(cred){
+    // 自分の管理者カードに合言葉を書く。ルールが合言葉を確かめ、違えば書けない
+    return fs.collection("admins").doc(cred.user.uid).set({key:KEY});
+  });
+})
+.then(function(){
+  status("管理者として開いています。編集したいクリップの「編集」を押してください。","ok");
+  $("main").hidden=false;
+  fs.collection("clips").onSnapshot(function(snap){
+    clips=snap.docs.map(function(d){ return normalize(d.id,d.data()); }).filter(Boolean);
+    if(editing && !clips.some(function(c){ return c.slug===editing; })) closeEditor(); else renderRows();
+  }, function(){ status("クリップを読み込めませんでした。開き直してください。","ng"); });
+})
+.catch(function(e){
+  if(e&&e.code==="permission-denied") status("合言葉が違います。正しい管理用URLで開いてください。","ng");
+  else if(e&&e.code==="auth/operation-not-allowed") status("Firebase の匿名ログインがオフになっています。","ng");
+  else status("接続できませんでした。通信を確認して開き直してください。","ng");
+});
+})();
+</script>
+</body>
+</html>
