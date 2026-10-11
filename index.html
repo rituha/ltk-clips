@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>LTK Finale クリップアルバム</title>
+<meta name="description" content="LTK Season: Finale の Twitch クリップを選手・チームごとに集めて、ランダムに流して振り返るサイト">
+<style>
+/* 配色：4チームの花の色 ＋ LAUREL の月桂樹グリーンと金。フォントはPC標準のもの（外部から読み込まない） */
+:root{
+  --bg:#F1F3EE; --surface:#FFFFFF; --sunk:#E5E9E2; --line:#CBD3C8;
+  --fg:#17221B; --muted:#56665B;
+  --accent:#2E6A48; --accent-ink:#FFFFFF; --gold:#9C7318; --gold-soft:#F2E6C6;
+  --err:#B42346;
+  --dahlia:#C2410C; --camellia:#C0264E; --iris:#6D4FC2; --laurel:#2E7D4F;
+  --stage:#0C120E;
+  --f-display:"Yu Mincho","YuMincho","Hiragino Mincho ProN","Noto Serif JP",serif;
+  --f-body:"Yu Gothic UI","Yu Gothic","YuGothic","Hiragino Kaku Gothic ProN","Noto Sans JP",Meiryo,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0E1411; --surface:#161F1A; --sunk:#1D2822; --line:#2C3A31;
+  --fg:#E4EBE5; --muted:#93A497;
+  --accent:#78C095; --accent-ink:#0E1411; --gold:#DDB45A; --gold-soft:#372F1E;
+  --err:#F08AA2;
+  --dahlia:#FB8B5B; --camellia:#F47A98; --iris:#A893F0; --laurel:#6CC892;
+  --stage:#050806; color-scheme:dark;
+}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.7}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:max(16px,env(safe-area-inset-left));padding-block:24px 64px;display:grid;gap:40px}
+a{color:var(--accent)}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+h1,h2,h3{margin:0;text-wrap:balance}
+[hidden]{display:none!important}
+.eyebrow{font-size:12px;letter-spacing:.14em;color:var(--muted);font-weight:700}
+
+/* header */
+.hero{display:grid;gap:8px}
+.hero h1{font-family:var(--f-display);font-weight:800;font-size:clamp(28px,5.4vw,46px);line-height:1.2}
+.hero h1 em{font-style:normal;color:var(--gold)}
+.hero p{margin:0;color:var(--muted);max-width:62ch}
+.counts{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--muted)}
+.counts b{font-size:20px;color:var(--fg);font-variant-numeric:tabular-nums;margin-right:2px}
+.demo{background:var(--gold-soft);border-radius:8px;padding:10px 14px;font-size:13px;margin:0}
+
+.sec-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 16px;margin-bottom:14px}
+.sec-head h2{font-family:var(--f-display);font-size:24px}
+.sec-head p{margin:0;font-size:13px;color:var(--muted)}
+
+/* player */
+.theater{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:start}
+@media (max-width:860px){.theater{grid-template-columns:minmax(0,1fr)}}
+.screen{background:var(--stage);border-radius:12px;overflow:hidden;aspect-ratio:16/9;max-width:100%;position:relative;display:grid;place-items:center;color:#DCE5DE}
+.screen iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.screen .idle{display:grid;gap:6px;justify-items:center;text-align:center;padding:20px;font-size:14px;color:#A9B8AD}
+.screen .idle strong{font-family:var(--f-display);font-size:20px;color:#EEF3EF}
+.screen .idle a{color:#9ED7B4}
+.now{display:grid;gap:8px;margin-top:10px}
+.now .line{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.now .title{font-weight:700;overflow-wrap:anywhere}
+.transport{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.prog{font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted);margin-left:auto}
+.bar{height:3px;background:var(--sunk);border-radius:2px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--gold);transition:width .2s linear}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:12px;min-width:0}
+.tabs{display:grid;grid-template-columns:1fr 1fr;background:var(--sunk);border-radius:8px;padding:3px;gap:3px}
+.tabs button{appearance:none;border:0;background:transparent;border-radius:6px;padding:7px;font-weight:700;cursor:pointer;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.small{font-size:12px;color:var(--muted);margin:0}
+.pool{font-size:13px}
+.pool b{font-variant-numeric:tabular-nums}
+
+/* team toggles */
+.teams{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.tbtn{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 10px;text-align:left;cursor:pointer;display:grid;gap:0;font-size:13px}
+.tbtn strong{font-size:13px;letter-spacing:.04em;color:var(--tc)}
+.tbtn span{font-size:11px;color:var(--muted)}
+.tbtn[aria-pressed="true"]{background:var(--tc);border-color:var(--tc)}
+.tbtn[aria-pressed="true"] strong,.tbtn[aria-pressed="true"] span{color:var(--surface)}
+
+/* player picker */
+.picker{display:grid;gap:10px}
+.pteam{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.pteam>summary{list-style:none;cursor:pointer;padding:8px 12px;display:flex;justify-content:space-between;gap:8px;font-weight:700;font-size:13px;color:var(--tc);background:var(--sunk)}
+.pteam>summary::-webkit-details-marker{display:none}
+.pteam>summary .n{color:var(--muted);font-weight:400}
+.tier{display:grid;grid-template-columns:64px minmax(0,1fr);gap:6px 8px;padding:8px 12px;border-top:1px solid var(--line);align-items:start}
+.tier>small{font-size:10px;letter-spacing:.12em;font-weight:700;color:var(--muted);padding-top:5px}
+.pchips{display:flex;flex-wrap:wrap;gap:5px}
+.pchip{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:3px 10px;font-size:12.5px;cursor:pointer;display:inline-flex;gap:5px;align-items:baseline}
+.pchip i{font-style:normal;font-size:10px;color:var(--muted);letter-spacing:.06em}
+.pchip[aria-pressed="true"]{background:var(--tc);border-color:var(--tc);color:var(--surface)}
+.pchip[aria-pressed="true"] i{color:var(--surface);opacity:.85}
+.pchip .c{font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pchip[aria-pressed="true"] .c{color:var(--surface)}
+.pick-tools{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
+.linkbtn{appearance:none;border:0;background:none;padding:0;color:var(--accent);text-decoration:underline;cursor:pointer;font-size:12.5px}
+
+/* buttons */
+.btn{appearance:none;border:0;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;background:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--fg)}
+.btn.big{width:100%;padding:11px}
+select,input[type=url],input[type=text],input[type=search]{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;min-width:0}
+
+/* tags */
+.tag{font-size:12px;padding:1px 9px;border-radius:999px;border:1px solid var(--tc);color:var(--tc);white-space:nowrap}
+.tag.team{background:var(--tc);color:var(--surface)}
+
+/* register */
+.reg{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:16px;align-items:start}
+@media (max-width:860px){.reg{grid-template-columns:minmax(0,1fr)}}
+.field{display:grid;gap:4px;font-size:13px;font-weight:700}
+.field .hint{font-weight:400;color:var(--muted);font-size:12px}
+.parse{font-size:12.5px;margin:0;min-height:1.6em;overflow-wrap:anywhere}
+.parse.ok{color:var(--accent)} .parse.ng{color:var(--err)}
+.chosen{display:flex;flex-wrap:wrap;gap:5px;min-height:28px;align-items:center}
+.msg{margin:0;font-size:13.5px;font-weight:700}
+.msg.ok{color:var(--accent)} .msg.ng{color:var(--err)} .msg.info{color:var(--gold)}
+
+/* list */
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.filters select{width:auto;flex:0 1 auto}
+.filters input{flex:1 1 200px}
+.list{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px}
+.item{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:8px;min-width:0;align-content:start}
+.item .t{font-weight:700;overflow-wrap:anywhere;font-size:14.5px}
+.item .slug{font-size:11px;color:var(--muted);overflow-wrap:anywhere;font-family:Consolas,"Cascadia Mono",monospace}
+.item .tags{display:flex;flex-wrap:wrap;gap:4px}
+.item .foot{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;font-size:12.5px}
+.item.playing{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
+.empty{border:1px dashed var(--line);border-radius:10px;padding:26px 18px;text-align:center;color:var(--muted);display:grid;gap:4px;justify-items:center}
+.empty strong{font-family:var(--f-display);font-size:18px;color:var(--fg)}
+.more{display:flex;justify-content:center;margin-top:12px}
+
+.about{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px;font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:20px}
+.about h3{font-size:14px;color:var(--fg);margin-bottom:4px}
+.about ul{margin:0;padding-left:1.2em}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="eyebrow">LEAGUE THE K4SEN · SEASON: FINALE · 2026.10.15 – 11.22</div>
+    <h1><em>LTK Finale</em> クリップアルバム</h1>
+    <p>大御所にゅん子さんが大会を振り返るためのクリップ置き場です。Twitch クリップのリンクを貼って選手を選ぶと、チーム・選手と紐づいて登録されます。登録は誰でもできます。</p>
+    <div class="counts"><span><b id="c-clips">0</b>本のクリップ</span><span><b id="c-players">0</b>人の選手が登場</span></div>
+    <p class="demo" id="demo-banner" hidden>お試しモードで動いています。登録したクリップはこのブラウザの中にだけ保存され、他の人には見えません。みんなで使うには「はじめに読んでください.txt」の手順で Firebase を設定してください。</p>
+    <p class="demo" id="err-banner" hidden></p>
+  </header>
+
+  <!-- ===== ランダム再生 ===== -->
+  <section aria-labelledby="play-h">
+    <div class="sec-head">
+      <h2 id="play-h">ランダム再生</h2>
+      <p>チームか選手を選んで再生します。1周するまで同じクリップは流れません。</p>
+    </div>
+    <div class="theater">
+      <div style="min-width:0">
+        <div class="screen" id="screen">
+          <div class="idle" id="idle">
+            <strong>チームか選手を選んでください</strong>
+            <span>右のパネルで選んで「シャッフル再生」を押すと始まります。</span>
+          </div>
+        </div>
+        <div class="bar" aria-hidden="true"><i id="bar"></i></div>
+        <div class="now" id="now" hidden>
+          <div class="title" id="now-title"></div>
+          <div class="line" id="now-tags"></div>
+          <div class="transport">
+            <button class="btn ghost" type="button" id="prev">◀ 前へ</button>
+            <button class="btn" type="button" id="next">次へ ▶</button>
+            <a id="now-link" href="#" target="_blank" rel="noopener noreferrer" style="font-size:13px">Twitchで開く ↗</a>
+            <span class="prog" id="prog"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="tabs" role="tablist">
+          <button type="button" role="tab" id="tab-team" aria-selected="true">チームから</button>
+          <button type="button" role="tab" id="tab-player" aria-selected="false">選手から</button>
+        </div>
+        <div id="pane-team">
+          <p class="small" style="margin-bottom:6px">複数選べます。</p>
+          <div class="teams" id="play-teams"></div>
+        </div>
+        <div id="pane-player" hidden>
+          <div class="pick-tools" style="margin-bottom:6px"><p class="small">複数選べます。数字はクリップ数。</p><button type="button" class="linkbtn" id="play-clear">選択を全部外す</button></div>
+          <div class="picker" id="play-players"></div>
+        </div>
+        <p class="pool" id="pool">対象 <b>0</b> 本</p>
+        <label class="field">次のクリップへ進むまで
+          <select id="auto">
+            <option value="0">自動で進まない（「次へ」で進む）</option>
+            <option value="30">30秒</option>
+            <option value="45">45秒</option>
+            <option value="62" selected>60秒（クリップの最大の長さ）</option>
+          </select>
+        </label>
+        <button class="btn big" type="button" id="shuffle" disabled>シャッフル再生</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 登録 ===== -->
+  <section aria-labelledby="reg-h">
+    <div class="sec-head">
+      <h2 id="reg-h">クリップを登録</h2>
+      <p>同じクリップが登録済みなら新しくは作らず、選んだ選手だけを追加して1つにまとめます。</p>
+    </div>
+    <form class="reg" id="regf" novalidate>
+      <div class="panel">
+        <label class="field">Twitch クリップのリンク
+          <span class="hint">例：https://www.twitch.tv/〇〇/clip/… または https://clips.twitch.tv/…</span>
+          <input type="url" id="r-url" autocomplete="off" required placeholder="https://clips.twitch.tv/…">
+        </label>
+        <p class="parse" id="r-parse" aria-live="polite"></p>
+        <label class="field">ひとこと（任意・40文字まで）
+          <span class="hint">どんな場面か。一番最初に登録した人のものが表示されます</span>
+          <input type="text" id="r-title" maxlength="40" placeholder="例：にゅん子ジンクス ペンタキル">
+        </label>
+        <div class="field">映っている選手（1〜10人）
+          <div class="chosen" id="r-chosen"><span class="small">右から選んでください</span></div>
+        </div>
+        <button class="btn big" type="submit" id="r-submit">登録する</button>
+        <p class="msg" id="r-msg" role="status" aria-live="polite"></p>
+      </div>
+      <div class="panel">
+        <div class="pick-tools"><p class="small">選手を押して選びます（もう一度押すと外れます）。</p><button type="button" class="linkbtn" id="reg-clear">選択を全部外す</button></div>
+        <div class="picker" id="reg-players"></div>
+      </div>
+    </form>
+  </section>
+
+  <!-- ===== 一覧 ===== -->
+  <section aria-labelledby="list-h">
+    <div class="sec-head">
+      <h2 id="list-h">登録されたクリップ</h2>
+      <p id="list-sum"></p>
+    </div>
+    <div class="filters">
+      <select id="f-team" aria-label="チームで絞り込み"><option value="">全チーム</option></select>
+      <select id="f-player" aria-label="選手で絞り込み"><option value="">全選手</option></select>
+      <input type="search" id="f-q" placeholder="ひとこと・選手名で検索" aria-label="検索">
+    </div>
+    <div class="list" id="list"></div>
+    <div class="more"><button class="btn ghost" type="button" id="more" hidden>もっと見る</button></div>
+  </section>
+
+  <footer class="about">
+    <div>
+      <h3>このサイトがすること</h3>
+      <ul>
+        <li>Twitch クリップのリンク・選手・ひとことを保存して、見に来た人全員に一覧と再生を見せる</li>
+        <li>クリップは Twitch 公式の埋め込みプレイヤーで再生する</li>
+      </ul>
+    </div>
+    <div>
+      <h3>しないこと</h3>
+      <ul>
+        <li>動画のダウンロード・保存・再アップロードはしない（リンクだけを保存）</li>
+        <li>名前・メールなどの個人情報は集めない。ログインもない</li>
+        <li>Twitch アカウントやパソコンには何もしない</li>
+      </ul>
+    </div>
+    <div>
+      <h3>まちがえて登録したら</h3>
+      <ul>
+        <li>登録は誰でもできますが、削除と修正はサイト管理者だけができます</li>
+        <li>管理者に、クリップのリンクを添えて伝えてください</li>
+      </ul>
+    </div>
+  </footer>
+</div>
+
+<script src="config.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* ================= 大会データ（2026/10/07時点の公開情報） =================
+   選手ID = チーム-部門-ロール（例: laurel-c-adc）。firestore.rules にも同じ一覧があります */
+var TEAMS = [
+  {id:"dahlia",   name:"DAHLIA DIADEM",  short:"DAHLIA",   roster:{
+    m:["わしだい","しゃるる","たぬき忍者","Day1","hetel"],
+    c:["酒寄颯馬","きなこ","スタンミじゃぱん","じゃすぱー","神楽めあ"],
+    n:["SHAKA","まざー３","天ノ川ねる","夢野あかり","白波らむね"]}},
+  {id:"camellia", name:"CAMELLIA CROWN", short:"CAMELLIA", roster:{
+    m:["Yutapon","Rainbrain","Ceros","Yuhi","Nemoh"],
+    c:["YUKIO","k4sen","葛葉","龍巻ちせ","昏昏アリア"],
+    n:["叶","ゆふな","空澄セナ","獅子堂あかり","鷹宮リオン"]}},
+  {id:"iris",     name:"IRIS TIARA",     short:"IRIS",     roster:{
+    m:["らいじん","ゆにか","Eugeo","Zerost","Enty"],
+    c:["mittiii","AlphaAzur","たかやスペシャル","ごんかね","レグルシュ・ライオンハート"],
+    n:["橘ひなの","ありけん","まいたけ","天帝フォルテ","白那しずく"]}},
+  {id:"laurel",   name:"LAUREL REGALIA", short:"LAUREL",   roster:{
+    m:["apaMEN","ねすてぃー","Recap","ハレっち","てぃんとん"],
+    c:["焼きパン","Killin9Hit","乾伸一郎","大御所にゅん子","千燈ゆうひ"],
+    n:["狐白うる","アステル・レダ","春茶","なぎさっち","No.1005"]}}
+];
+var TIERS = [{k:"c",name:"CORE"},{k:"n",name:"NEXT"},{k:"m",name:"MASTERS"}];
+var ROLES = ["top","jg","mid","adc","sup"];
+var ROLE_LABEL = {top:"TOP",jg:"JG",mid:"MID",adc:"ADC",sup:"SUP"};
+var PLAYERS = {}, PLAYER_ORDER = [], TEAM_BY_ID = {};
+TEAMS.forEach(function(t){
+  TEAM_BY_ID[t.id]=t;
+  TIERS.forEach(function(tr){
+    t.roster[tr.k].forEach(function(name,i){
+      var id=t.id+"-"+tr.k+"-"+ROLES[i];
+      PLAYERS[id]={id:id,name:name,team:t.id,tier:tr.k,role:ROLES[i]};
+      PLAYER_ORDER.push(id);
+    });
+  });
+});
+var STAR = "laurel-c-adc"; // 大御所にゅん子
+var MAX_PLAYERS = 10;
+
+/* ================= helpers ================= */
+function $(id){ return document.getElementById(id); }
+function el(tag,cls,text){ var e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; }
+function teamColor(id){ return "var(--"+id+")"; }
+function uniq(a){ return a.filter(function(x,i){ return a.indexOf(x)===i; }); }
+function teamsOf(pids){ return uniq(pids.map(function(p){ return PLAYERS[p].team; })); }
+function shuffle(a){ for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+function clipUrl(slug){ return "https://clips.twitch.tv/"+encodeURIComponent(slug); }
+
+/* Twitch クリップのリンクから「クリップID」を取り出す。同じクリップなら書き方が違っても同じIDになる */
+var SLUG_RE = /^[A-Za-z0-9_-]{3,120}$/;
+function parseClip(text){
+  var u; try{ u=new URL(String(text).trim()); }catch(e){ return null; }
+  if(u.protocol!=="https:" && u.protocol!=="http:") return null;
+  var h=u.hostname.toLowerCase().replace(/^(www|m|go)\./,""), slug=null;
+  if(h==="clips.twitch.tv"){
+    slug = u.pathname==="/embed" ? u.searchParams.get("clip") : u.pathname.split("/")[1];
+  } else if(h==="twitch.tv"){
+    var m=u.pathname.match(/^\/(?:[^\/]+\/)?clip\/([^\/]+)/); slug=m&&m[1];
+    if(!slug && u.pathname==="/embed") slug=u.searchParams.get("clip");
+  }
+  if(!slug) return null;
+  try{ slug=decodeURIComponent(slug); }catch(e){ return null; }
+  return SLUG_RE.test(slug)?slug:null;
+}
+
+/* ================= 保存先（Firebase か お試しモード） ================= */
+var store = null;
+var clips = []; // {slug, players[], teams[], title, createdAt}
+
+function normalize(slug, d){
+  var players=(Array.isArray(d.players)?d.players:[]).filter(function(p){ return PLAYERS[p]; });
+  if(!players.length || !SLUG_RE.test(slug)) return null;
+  var ts=d.createdAt; var ms = ts&&typeof ts.toMillis==="function"? ts.toMillis() : (typeof ts==="number"?ts:Date.now());
+  return {slug:slug, players:players, teams:teamsOf(players), title:typeof d.title==="string"?d.title.slice(0,40):"", createdAt:ms};
+}
+
+function localStore(){
+  var KEY="ltk-finale-clips-demo", mem={};
+  function load(){ try{ mem=JSON.parse(localStorage.getItem(KEY)||"{}")||{}; }catch(e){ mem=mem||{}; } }
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(mem)); }catch(e){} }
+  var listener=null;
+  function emit(){ if(listener) listener(Object.keys(mem).map(function(k){ return normalize(k,mem[k]); }).filter(Boolean)); }
+  load();
+  return {
+    demo:true,
+    subscribe:function(cb){ listener=cb; emit(); },
+    register:function(slug, players, title){
+      load();
+      var cur=mem[slug], status;
+      if(!cur){ mem[slug]={players:players.slice(), teams:teamsOf(players), title:title, createdAt:Date.now()}; status="created"; }
+      else{
+        var add=players.filter(function(p){ return cur.players.indexOf(p)<0; });
+        if(!add.length) status="exists";
+        else if(cur.players.length+add.length>MAX_PLAYERS) return Promise.reject({code:"too-many"});
+        else { cur.players=cur.players.concat(add); cur.teams=teamsOf(cur.players); status="merged"; }
+      }
+      save(); emit(); return Promise.resolve(status);
+    }
+  };
+}
+
+function firebaseStore(cfg){
+  return new Promise(function(resolve,reject){
+    var V="10.12.2", base="https://www.gstatic.com/firebasejs/"+V+"/";
+    function load(src){ return new Promise(function(ok,ng){ var s=document.createElement("script"); s.src=src; s.onload=ok; s.onerror=ng; document.head.appendChild(s); }); }
+    load(base+"firebase-app-compat.js").then(function(){ return load(base+"firebase-firestore-compat.js"); }).then(function(){
+      var app=firebase.initializeApp(cfg), fs=app.firestore(), FV=firebase.firestore.FieldValue;
+      resolve({
+        demo:false,
+        subscribe:function(cb, onErr){
+          fs.collection("clips").onSnapshot(function(snap){
+            cb(snap.docs.map(function(d){ return normalize(d.id,d.data()); }).filter(Boolean));
+          }, onErr);
+        },
+        register:function(slug, players, title){
+          var ref=fs.collection("clips").doc(slug), status;
+          return fs.runTransaction(function(tx){
+            return tx.get(ref).then(function(snap){
+              if(!snap.exists){
+                var doc={slug:slug, players:players, teams:teamsOf(players), createdAt:FV.serverTimestamp(), updatedAt:FV.serverTimestamp()};
+                if(title) doc.title=title;
+                tx.set(ref, doc); status="created"; return;
+              }
+              var old=snap.data().players||[];
+              var add=players.filter(function(p){ return old.indexOf(p)<0; });
+              if(!add.length){ status="exists"; return; }
+              if(old.length+add.length>MAX_PLAYERS) throw {code:"too-many"};
+              var all=old.concat(add);
+              tx.update(ref,{players:FV.arrayUnion.apply(null,add), teams:FV.arrayUnion.apply(null,teamsOf(all)), updatedAt:FV.serverTimestamp()});
+              status="merged";
+            });
+          }).then(function(){ return status; });
+        }
+      });
+    }).catch(reject);
+  });
+}
+
+/* ================= 選手ピッカー（登録用・再生用で共用） ================= */
+function buildPicker(root, selected, onChange, withCounts){
+  var chips={};
+  TEAMS.forEach(function(t){
+    var det=el("details","pteam"); det.style.setProperty("--tc",teamColor(t.id));
+    if(t.id==="laurel") det.open=true;
+    var sum=el("summary"); sum.appendChild(el("span",null,t.name)); var n=el("span","n",""); sum.appendChild(n); det.appendChild(sum);
+    TIERS.forEach(function(tr){
+      var row=el("div","tier"); row.appendChild(el("small",null,tr.name));
+      var box=el("div","pchips");
+      ROLES.forEach(function(r){
+        var id=t.id+"-"+tr.k+"-"+r, p=PLAYERS[id];
+        var b=el("button","pchip"); b.type="button"; b.style.setProperty("--tc",teamColor(t.id));
+        b.appendChild(el("i",null,ROLE_LABEL[r])); b.appendChild(document.createTextNode(p.name));
+        var c=null; if(withCounts){ c=el("span","c",""); b.appendChild(c); }
+        b.setAttribute("aria-pressed","false");
+        b.addEventListener("click",function(){
+          var i=selected.indexOf(id);
+          if(i>=0) selected.splice(i,1); else selected.push(id);
+          onChange();
+        });
+        chips[id]={btn:b,count:c}; box.appendChild(b);
+      });
+      row.appendChild(box); det.appendChild(row);
+    });
+    t._n = t._n || {}; t._n[root.id]=n;
+    root.appendChild(det);
+  });
+  return function refresh(counts){
+    PLAYER_ORDER.forEach(function(id){
+      chips[id].btn.setAttribute("aria-pressed", selected.indexOf(id)>=0?"true":"false");
+      if(chips[id].count) chips[id].count.textContent = counts ? (counts[id]||0) : "";
+    });
+    TEAMS.forEach(function(t){
+      var k=selected.filter(function(id){ return PLAYERS[id].team===t.id; }).length;
+      t._n[root.id].textContent = k? k+"人選択中" : "";
+    });
+  };
+}
+
+function playerTag(id){
+  var p=PLAYERS[id], s=el("span","tag",p.name); s.style.setProperty("--tc",teamColor(p.team)); return s;
+}
+function teamTag(id){
+  var s=el("span","tag team",TEAM_BY_ID[id].short); s.style.setProperty("--tc",teamColor(id)); return s;
+}
+
+/* ================= 登録フォーム ================= */
+var regSel=[];
+var regRefresh = buildPicker($("reg-players"), regSel, renderRegChosen, false);
+function renderRegChosen(){
+  regRefresh();
+  var box=$("r-chosen"); box.textContent="";
+  if(!regSel.length){ box.appendChild(el("span","small","右から選んでください")); return; }
+  regSel.forEach(function(id){ box.appendChild(playerTag(id)); });
+  if(regSel.length>MAX_PLAYERS){ box.appendChild(el("span","small","（"+MAX_PLAYERS+"人までです）")); }
+}
+$("reg-clear").addEventListener("click",function(){ regSel.length=0; renderRegChosen(); });
+
+$("r-url").addEventListener("input",function(){
+  var p=$("r-parse"), v=this.value.trim();
+  if(!v){ p.textContent=""; p.className="parse"; return; }
+  var slug=parseClip(v);
+  if(!slug){ p.textContent="Twitch クリップのリンクとして読み取れません。クリップの「共有」からコピーしたリンクを貼ってください。"; p.className="parse ng"; return; }
+  var ex=clips.filter(function(c){ return c.slug===slug; })[0];
+  if(ex){ p.textContent="登録済みのクリップです（"+ex.players.map(function(id){return PLAYERS[id].name;}).join("・")+"）。選んだ選手が追加されます。"; p.className="parse ok"; }
+  else { p.textContent="クリップID："+slug; p.className="parse ok"; }
+});
+
+$("regf").addEventListener("submit",function(ev){
+  ev.preventDefault();
+  var msg=$("r-msg"); msg.className="msg"; msg.textContent="";
+  function ng(t){ msg.textContent=t; msg.className="msg ng"; }
+  if(!store){ ng("まだ準備中です。少し待ってからもう一度押してください。"); return; }
+  var slug=parseClip($("r-url").value);
+  if(!slug) return ng("Twitch クリップのリンクを貼ってください。");
+  if(!regSel.length) return ng("映っている選手を1人以上選んでください。");
+  if(regSel.length>MAX_PLAYERS) return ng("選手は"+MAX_PLAYERS+"人までです。");
+  var title=$("r-title").value.trim().slice(0,40);
+  var btn=$("r-submit"); btn.disabled=true; msg.textContent="登録中…"; msg.className="msg info";
+  store.register(slug, regSel.slice(), title).then(function(status){
+    btn.disabled=false;
+    if(status==="created"){ msg.textContent="登録しました。"; msg.className="msg ok"; }
+    else if(status==="merged"){ msg.textContent="登録済みのクリップだったので、選んだ選手を追加して1つにまとめました。"; msg.className="msg ok"; }
+    else { msg.textContent="このクリップは同じ選手でもう登録されています。"; msg.className="msg info"; }
+    $("r-url").value=""; $("r-title").value=""; $("r-parse").textContent=""; regSel.length=0; renderRegChosen();
+  }).catch(function(e){
+    btn.disabled=false;
+    if(e&&e.code==="too-many") ng("このクリップには選手が"+MAX_PLAYERS+"人まで登録できます。");
+    else if(e&&e.code==="permission-denied") ng("登録できませんでした。入力内容がルールに合っていない可能性があります。");
+    else if(e&&e.code==="resource-exhausted") ng("今日の利用上限に達しました。明日もう一度お試しください。");
+    else ng("登録できませんでした。通信を確認して、もう一度お試しください。");
+  });
+});
+
+/* ================= ランダム再生 ================= */
+var mode="team", playTeams=[], playSel=[];
+var playRefresh = buildPicker($("play-players"), playSel, renderPool, true);
+var teamBtns={};
+TEAMS.forEach(function(t){
+  var b=el("button","tbtn"); b.type="button"; b.style.setProperty("--tc",teamColor(t.id));
+  b.appendChild(el("strong",null,t.name)); var s=el("span",null,""); b.appendChild(s);
+  b.setAttribute("aria-pressed","false");
+  b.addEventListener("click",function(){
+    var i=playTeams.indexOf(t.id); if(i>=0) playTeams.splice(i,1); else playTeams.push(t.id); renderPool();
+  });
+  teamBtns[t.id]={btn:b,count:s}; $("play-teams").appendChild(b);
+});
+$("play-clear").addEventListener("click",function(){ playSel.length=0; renderPool(); });
+function setMode(m){
+  mode=m;
+  $("tab-team").setAttribute("aria-selected", m==="team"?"true":"false");
+  $("tab-player").setAttribute("aria-selected", m==="player"?"true":"false");
+  $("pane-team").hidden = m!=="team"; $("pane-player").hidden = m!=="player";
+  renderPool();
+}
+$("tab-team").addEventListener("click",function(){ setMode("team"); });
+$("tab-player").addEventListener("click",function(){ setMode("player"); });
+
+function poolClips(){
+  return clips.filter(function(c){
+    if(mode==="team") return c.teams.some(function(t){ return playTeams.indexOf(t)>=0; });
+    return c.players.some(function(p){ return playSel.indexOf(p)>=0; });
+  });
+}
+function renderPool(){
+  var tc={}, pc={};
+  clips.forEach(function(c){ c.teams.forEach(function(t){ tc[t]=(tc[t]||0)+1; }); c.players.forEach(function(p){ pc[p]=(pc[p]||0)+1; }); });
+  TEAMS.forEach(function(t){
+    teamBtns[t.id].btn.setAttribute("aria-pressed", playTeams.indexOf(t.id)>=0?"true":"false");
+    teamBtns[t.id].count.textContent=(tc[t.id]||0)+" 本";
+  });
+  playRefresh(pc);
+  var n=poolClips().length, chosen = mode==="team"?playTeams.length:playSel.length;
+  $("pool").innerHTML=""; $("pool").appendChild(document.createTextNode("対象 ")); $("pool").appendChild(el("b",null,String(n))); $("pool").appendChild(document.createTextNode(" 本"+(chosen?"":"（まだ何も選んでいません）")));
+  $("shuffle").disabled = n===0;
+}
+
+var queue=[], pos=-1, timer=null, tick=null, startedAt=0;
+var canEmbed = /^https?:$/.test(location.protocol) && !!location.hostname;
+
+$("shuffle").addEventListener("click",function(){
+  queue=shuffle(poolClips().map(function(c){ return c.slug; })); pos=0; play();
+});
+$("next").addEventListener("click",function(){ step(1); });
+$("prev").addEventListener("click",function(){ step(-1); });
+$("auto").addEventListener("change",function(){ if(pos>=0&&pos<queue.length) arm(); });
+
+function step(d){
+  if(!queue.length) return;
+  pos+=d; if(pos<0) pos=0;
+  if(pos>=queue.length){ finished(); return; }
+  play();
+}
+function clearTimers(){ clearTimeout(timer); clearInterval(tick); $("bar").style.width="0"; }
+function arm(){
+  clearTimers();
+  var sec=+$("auto").value; if(!sec) return;
+  startedAt=Date.now();
+  timer=setTimeout(function(){ step(1); }, sec*1000);
+  tick=setInterval(function(){ $("bar").style.width=Math.min(100,(Date.now()-startedAt)/(sec*10))+"%"; }, 250);
+}
+function findClip(slug){ return clips.filter(function(c){ return c.slug===slug; })[0]; }
+function play(){
+  var slug=queue[pos], c=findClip(slug)||{slug:slug,players:[],teams:[],title:""};
+  var scr=$("screen"); scr.textContent="";
+  if(canEmbed){
+    var f=document.createElement("iframe");
+    f.src="https://clips.twitch.tv/embed?clip="+encodeURIComponent(slug)+"&parent="+encodeURIComponent(location.hostname)+"&autoplay=true&muted=false";
+    f.allow="autoplay; fullscreen"; f.allowFullscreen=true; f.title="Twitch クリップ";
+    scr.appendChild(f);
+  } else {
+    var idle=el("div","idle"); idle.appendChild(el("strong",null,"このままではサイト内で再生できません"));
+    idle.appendChild(el("span",null,"Twitch の埋め込みは、Web に公開したサイト（GitHub Pages など）でだけ動きます。"));
+    var a=el("a",null,"Twitchで開く ↗"); a.href=clipUrl(slug); a.target="_blank"; a.rel="noopener noreferrer"; idle.appendChild(a);
+    scr.appendChild(idle);
+  }
+  $("now").hidden=false;
+  $("now-title").textContent=c.title||slug;
+  var tg=$("now-tags"); tg.textContent="";
+  c.teams.forEach(function(t){ tg.appendChild(teamTag(t)); });
+  c.players.forEach(function(p){ tg.appendChild(playerTag(p)); });
+  $("now-link").href=clipUrl(slug);
+  $("prog").textContent=(pos+1)+" / "+queue.length;
+  $("prev").disabled = pos===0;
+  arm(); renderList();
+}
+function finished(){
+  clearTimers(); pos=queue.length;
+  var scr=$("screen"); scr.textContent="";
+  var idle=el("div","idle"); idle.appendChild(el("strong",null,"全 "+queue.length+" 本を再生しました"));
+  idle.appendChild(el("span",null,"もう一度「シャッフル再生」を押すと、新しい順番でもう1周します。"));
+  scr.appendChild(idle);
+  $("prog").textContent=queue.length+" / "+queue.length; renderList();
+}
+
+/* ================= 一覧 ================= */
+var PAGE=60, shown=PAGE;
+(function fillFilters(){
+  var ft=$("f-team"), fp=$("f-player");
+  TEAMS.forEach(function(t){ var o=el("option",null,t.name); o.value=t.id; ft.appendChild(o); });
+  TEAMS.forEach(function(t){
+    var g=document.createElement("optgroup"); g.label=t.name;
+    PLAYER_ORDER.filter(function(id){ return PLAYERS[id].team===t.id; }).forEach(function(id){
+      var p=PLAYERS[id], o=el("option",null,p.name+"（"+(p.tier==="c"?"CORE":p.tier==="n"?"NEXT":"MASTERS")+" "+ROLE_LABEL[p.role]+"）"); o.value=id; g.appendChild(o);
+    });
+    fp.appendChild(g);
+  });
+  ["f-team","f-player"].forEach(function(id){ $(id).addEventListener("change",function(){ shown=PAGE; renderList(); }); });
+  $("f-q").addEventListener("input",function(){ shown=PAGE; renderList(); });
+  $("more").addEventListener("click",function(){ shown+=PAGE; renderList(); });
+})();
+
+function renderList(){
+  var ft=$("f-team").value, fp=$("f-player").value, q=$("f-q").value.trim().toLowerCase();
+  var list=clips.filter(function(c){
+    if(ft && c.teams.indexOf(ft)<0) return false;
+    if(fp && c.players.indexOf(fp)<0) return false;
+    if(q){
+      var hay=(c.title+" "+c.players.map(function(p){return PLAYERS[p].name;}).join(" ")).toLowerCase();
+      if(hay.indexOf(q)<0) return false;
+    }
+    return true;
+  }).sort(function(a,b){ return b.createdAt-a.createdAt; });
+  $("list-sum").textContent = list.length+" 本"+(ft||fp||q?"（絞り込み中）":"")+" · 新しい順";
+  var root=$("list"); root.textContent="";
+  var playing = pos>=0&&pos<queue.length ? queue[pos] : null;
+  if(!list.length){
+    var e=el("div","empty"); e.style.gridColumn="1/-1";
+    e.appendChild(el("strong",null, clips.length?"条件に合うクリップがありません":"まだクリップがありません"));
+    e.appendChild(el("span",null, clips.length?"絞り込みをゆるめてみてください。":"上の「クリップを登録」から最初の1本をどうぞ。"));
+    root.appendChild(e); $("more").hidden=true; return;
+  }
+  list.slice(0,shown).forEach(function(c){
+    var it=el("article","item"+(c.slug===playing?" playing":""));
+    it.appendChild(el("div","t", c.title||"（ひとことなし）"));
+    var tg=el("div","tags");
+    c.teams.forEach(function(t){ tg.appendChild(teamTag(t)); });
+    c.players.forEach(function(p){ tg.appendChild(playerTag(p)); });
+    it.appendChild(tg);
+    it.appendChild(el("div","slug",c.slug));
+    var ft2=el("div","foot");
+    var pb=el("button","linkbtn","ここで再生"); pb.type="button";
+    pb.addEventListener("click",function(){ queue=[c.slug]; pos=0; play(); $("screen").scrollIntoView({behavior:"smooth",block:"center"}); });
+    ft2.appendChild(pb);
+    var a=el("a",null,"Twitchで開く ↗"); a.href=clipUrl(c.slug); a.target="_blank"; a.rel="noopener noreferrer"; ft2.appendChild(a);
+    it.appendChild(ft2);
+    root.appendChild(it);
+  });
+  $("more").hidden = list.length<=shown;
+}
+
+function renderCounts(){
+  $("c-clips").textContent=clips.length;
+  var s={}; clips.forEach(function(c){ c.players.forEach(function(p){ s[p]=1; }); });
+  $("c-players").textContent=Object.keys(s).length;
+}
+
+/* ================= 起動 ================= */
+function onData(list){ clips=list; renderCounts(); renderPool(); renderList(); }
+renderRegChosen(); setMode("team"); renderList();
+
+var cfg = window.LTK_FIREBASE_CONFIG || {};
+if(cfg.apiKey && cfg.projectId){
+  firebaseStore(cfg).then(function(s){
+    store=s;
+    s.subscribe(onData, function(){ var b=$("err-banner"); b.textContent="クリップを読み込めませんでした。時間をおいてページを開き直してください。"; b.hidden=false; });
+  }).catch(function(){
+    var b=$("err-banner"); b.textContent="データベースに接続できませんでした。通信を確認して開き直してください。"; b.hidden=false;
+  });
+} else {
+  store=localStore(); $("demo-banner").hidden=false; store.subscribe(onData);
+}
+})();
+</script>
+</body>
+</html>

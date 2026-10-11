@@ -1,0 +1,60 @@
+rules_version = '2';
+
+// LTK Finale クリップアルバム の書き込みルール
+// （はじめに読んでください.txt の手順2で、Firebase の「ルール」画面に丸ごと貼り付けます）
+//
+// ・誰でも読める
+// ・誰でも新しいクリップを登録できる（Twitch クリップIDの形・決められた選手IDだけ）
+// ・登録済みクリップには「選手を追加する」ことだけできる（消す・書き換えるのは不可）
+// ・削除や修正は、管理者が Firebase の画面から直接行う
+// ・clips 以外の場所には誰も読み書きできない
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function playerIds() {
+      return ['dahlia-m-top', 'dahlia-m-jg', 'dahlia-m-mid', 'dahlia-m-adc', 'dahlia-m-sup',
+              'dahlia-c-top', 'dahlia-c-jg', 'dahlia-c-mid', 'dahlia-c-adc', 'dahlia-c-sup',
+              'dahlia-n-top', 'dahlia-n-jg', 'dahlia-n-mid', 'dahlia-n-adc', 'dahlia-n-sup',
+              'camellia-m-top', 'camellia-m-jg', 'camellia-m-mid', 'camellia-m-adc', 'camellia-m-sup',
+              'camellia-c-top', 'camellia-c-jg', 'camellia-c-mid', 'camellia-c-adc', 'camellia-c-sup',
+              'camellia-n-top', 'camellia-n-jg', 'camellia-n-mid', 'camellia-n-adc', 'camellia-n-sup',
+              'iris-m-top', 'iris-m-jg', 'iris-m-mid', 'iris-m-adc', 'iris-m-sup',
+              'iris-c-top', 'iris-c-jg', 'iris-c-mid', 'iris-c-adc', 'iris-c-sup',
+              'iris-n-top', 'iris-n-jg', 'iris-n-mid', 'iris-n-adc', 'iris-n-sup',
+              'laurel-m-top', 'laurel-m-jg', 'laurel-m-mid', 'laurel-m-adc', 'laurel-m-sup',
+              'laurel-c-top', 'laurel-c-jg', 'laurel-c-mid', 'laurel-c-adc', 'laurel-c-sup',
+              'laurel-n-top', 'laurel-n-jg', 'laurel-n-mid', 'laurel-n-adc', 'laurel-n-sup'];
+    }
+
+    function validClip(slug, d) {
+      return slug.matches('^[A-Za-z0-9_-]{3,120}$')
+        && d.keys().hasOnly(['slug', 'players', 'teams', 'title', 'createdAt', 'updatedAt'])
+        && d.keys().hasAll(['slug', 'players', 'teams', 'createdAt', 'updatedAt'])
+        && d.slug == slug
+        && d.players is list && d.players.size() >= 1 && d.players.size() <= 10
+        && d.players.hasOnly(playerIds())
+        && d.teams is list && d.teams.size() >= 1 && d.teams.size() <= 4
+        && d.teams.hasOnly(['dahlia', 'camellia', 'iris', 'laurel'])
+        && (!('title' in d) || (d.title is string && d.title.size() <= 40));
+    }
+
+    match /clips/{slug} {
+      allow read: if true;
+
+      // 新規登録：同じIDのクリップがまだ無いときだけ（＝同じクリップは1つにまとまる）
+      allow create: if validClip(slug, request.resource.data)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      // 登録済みクリップ：選手（とチーム）を「足す」ことだけ許可
+      allow update: if validClip(slug, request.resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players', 'teams', 'updatedAt'])
+        && request.resource.data.players.hasAll(resource.data.players)
+        && request.resource.data.teams.hasAll(resource.data.teams)
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if false;
+    }
+  }
+}
